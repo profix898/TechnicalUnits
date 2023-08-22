@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>11.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <Version>0.9</Version>
+    <FileVersion>$(Version)</FileVersion>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <Copyright>Copyright © 2010-2023 Thilo Viereck</Copyright>
+    <RepositoryUrl>https://github.com/profix898/TechnicalUnits</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>Thilo Viereck, Christian Kuhlmann</Authors>
+    <Company />
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>TechnicalUnits provides SI units and engineering notation support (formatting + parsing)</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageOutputPath>./../</PackageOutputPath>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="$(SolutionDir)\logo.png" Pack="true" Visible="false" PackagePath="" />
+    <None Include="./../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
