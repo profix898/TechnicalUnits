@@ -5,13 +5,13 @@ using static System.Math;
 
 namespace TechnicalUnits.Math.Expressions;
 
-public sealed class FunctionMathExpression : MathExpressionBase
+public sealed class FunctionExpression : ExpressionBase
 {
     public static readonly string[] oneArgFunctions = { "abs", "acos", "asin", "atan", "ceiling", "cos", "cosh", "exp", "floor", "log", "log10", "sin", "sinh", "sqrt", "tan", "tanh" };
     
     public static readonly string[] twoArgFunction = { "max", "min", "pow" };
 
-    public FunctionMathExpression(string function, bool validate = true)
+    public FunctionExpression(string function, bool validate = true)
     {
         function = function.ToLowerInvariant();
 

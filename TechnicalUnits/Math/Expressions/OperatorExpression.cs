@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace TechnicalUnits.Math.Expressions;
 
-public sealed class OperatorMathExpression : MathExpressionBase
+public sealed class OperatorExpression : ExpressionBase
 {
     #region MathOperators enum
 
@@ -20,7 +20,7 @@ public sealed class OperatorMathExpression : MathExpressionBase
 
     public static readonly char[] OperatorSymbols = { '+', '-', '*', '/', '^' };
 
-    public OperatorMathExpression(string operation)
+    public OperatorExpression(string operation)
     {
         if (String.IsNullOrEmpty(operation))
             throw new ArgumentNullException(nameof(operation));

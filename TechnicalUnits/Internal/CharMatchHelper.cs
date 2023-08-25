@@ -46,7 +46,7 @@ internal static class CharMatchHelper
 
     public static bool IsOperator(char ch)
     {
-        return OperatorMathExpression.OperatorSymbols.Contains(ch);
+        return OperatorExpression.OperatorSymbols.Contains(ch);
     }
 
     public static bool IsValidUnitChar(char ch, UnitOptions unitOptions)
@@ -66,13 +66,12 @@ internal static class CharMatchHelper
         return false;
     }
 
-    public static int IsUnit(string str, UnitOptions unitOptions, out double unitConvFactor)
+    public static int IsUnit(string str, UnitOptions unitOptions, ref double unitConvFactor)
     {
-        unitConvFactor = 1.0;
-
         var unitSymbolLength = 0;
         if (StrEndsWithPattern(str, unitOptions.Unit.Symbol))
         {
+            unitConvFactor = 1.0;
             unitSymbolLength = unitOptions.Unit.Symbol.Length;
 
             return unitSymbolLength;

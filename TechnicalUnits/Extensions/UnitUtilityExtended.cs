@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Collections.Generic;
+using System.Globalization;
 using TechnicalUnits.Formatting;
 using TechnicalUnits.Units;
 
@@ -28,6 +29,20 @@ public static class UnitUtilityExtended
             formattingOptions.GroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
         }
 
-        return Parser.Parse(strValue, unit, formattingOptions);
+        return Parser.ParseString(strValue, unit, formattingOptions);
+    }
+
+    public static double Parse(this Unit unit, string strValue, IEnumerable<DerivedUnit> alternateUnits, CultureInfo? cultureInfo = null)
+    {
+        var formattingOptions = FormattingOptions.Default;
+        if (cultureInfo != null)
+        {
+            formattingOptions.DecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.GroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
+        }
+
+        var unitOptions = new UnitOptions(unit, alternateUnits);
+
+        return Parser.ParseString(strValue, unitOptions, formattingOptions);
     }
 }

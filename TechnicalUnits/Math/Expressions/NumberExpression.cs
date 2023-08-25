@@ -4,9 +4,9 @@ using static TechnicalUnits.Formatting.FormattingOptions;
 
 namespace TechnicalUnits.Math.Expressions;
 
-public sealed class NumberMathExpression : MathExpressionBase
+public sealed class NumberExpression : ExpressionBase
 {
-    public NumberMathExpression(double value)
+    public NumberExpression(double value)
     {
         Value = value;
     }

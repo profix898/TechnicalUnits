@@ -5,6 +5,11 @@ namespace TechnicalUnits.Internal;
 
 internal static class MathUtility
 {
+    public static double GetDecimals(double x)
+    {
+        return x - (int) x;
+    }
+
     /// <summary>GetExp3Value: Get the exponent to base 1000 of the argument as integer rounded towards neg.infinity.</summary>
     /// <returns>Returns 0 for 0 as input. Returns 1 for 1000, 2000, ... as input.</returns>
     public static int GetExp3Value(double num)

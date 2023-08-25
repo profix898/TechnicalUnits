@@ -3,9 +3,9 @@ using TechnicalUnits.Units;
 
 namespace TechnicalUnits.Math.Expressions;
 
-public sealed class ConvertMathExpression : MathExpressionBase
+public sealed class ConvertExpression : ExpressionBase
 {
-    public ConvertMathExpression(string expression)
+    public ConvertExpression(string expression)
     {
         Expression = expression;
     }

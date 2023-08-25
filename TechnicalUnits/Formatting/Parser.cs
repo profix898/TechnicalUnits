@@ -11,184 +11,183 @@ public static class Parser
 {
     #region Parse
 
-    public static double Parse(string strValue, UnitOptions unitOptions, FormattingOptions? formattingOptions = null, List<Exception>? warnings = null)
+    public static double ParseString(string strValue, UnitOptions unitOptions, FormattingOptions? formattingOptions = null, List<Exception>? warnings = null)
     {
-        var parserState = ParseStringStateMachine($"{strValue.Trim()} ", unitOptions, formattingOptions ?? FormattingOptions.Default);
+        var state = ParseStringInternal($"{strValue.Trim()} ", unitOptions, formattingOptions ?? FormattingOptions.Default);
 
         double value;
-        if (parserState.postDecVal != 0)
-            value = (double) parserState.preDecVal + (double) parserState.postDecVal;
+        if (state.postDecVal != 0)
+            value = (double) state.preDecVal + (double) state.postDecVal;
         else
-            value = (double) parserState.preDecVal;
+            value = (double) state.preDecVal;
 
-        warnings?.AddRange(parserState.warnings);
+        warnings?.AddRange(state.warnings);
 
-        return parserState.sign * value * parserState.unitConvFactor * Pow(10, parserState.expSign * parserState.exp);
+        return state.sign * value * state.unitConvFactor * Pow(10, state.expSign * state.exp);
     }
 
-    private static ParserState ParseStringStateMachine(string strValue, UnitOptions unitOptions, FormattingOptions formattingOptions)
+    private static ParserState ParseStringInternal(string strValue, UnitOptions unitOptions, FormattingOptions formattingOptions)
     {
-        var parserState = new ParserState();
+        var state = new ParserState();
 
         if (strValue.Length <= 0)
-            return parserState;
+            return state;
 
         var i = 0;
         var oldState = ParserPartEnum.EndOfStrPart;
         var oldi = i;
 
-        DiscoverUnitAtEndOfString(ref strValue, unitOptions, formattingOptions, parserState);
+        DiscoverUnitAtEndOfString(ref strValue, unitOptions, formattingOptions, state);
 
-        while (parserState.currentPart != ParserPartEnum.EndOfStrPart && i < strValue.Length)
+        while (state.currentPart != ParserPartEnum.EndOfStrPart && i < strValue.Length)
         {
             var ch = strValue[i];
 
-            if (oldState == parserState.currentPart && oldi == i)
+            if (oldState == state.currentPart && oldi == i)
                 throw new Exception("Internal Error: Neither state nor i have changed during a loop run.");
 
-            oldState = parserState.currentPart;
+            oldState = state.currentPart;
             oldi = i;
 
             string str;
             int exp;
-            switch (parserState.currentPart)
+            switch (state.currentPart)
             {
                 case ParserPartEnum.PreDecPart:
                     if (IsSign(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecSign;
+                        state.currentPart = ParserPartEnum.PreDecSign;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecNum;
+                        state.currentPart = ParserPartEnum.PreDecNum;
                         break;
                     }
 
                     i++; // Ignore unknown character
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecPart.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecPart.", ch));
                     break;
 
                 case ParserPartEnum.PreDecSign:
                     if (IsSign(ch))
                     {
                         if (IsNegativeSign(ch))
-                            parserState.sign *= -1;
+                            state.sign *= -1;
                         i++;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecNum;
+                        state.currentPart = ParserPartEnum.PreDecNum;
                         break;
                     }
 
                     i++;
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecSign.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecSign.", ch));
                     break;
 
                 case ParserPartEnum.PreDecNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append the number to the decStr
+                        state.decStr.Append(ch); // Append the number to the decStr
                         i++;
                         break;
                     }
 
-                    parserState.preDecVal = Int32.Parse(parserState.decStr.ToString());
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.DecSepPart;
+                    state.preDecVal = Int32.Parse(state.decStr.ToString());
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.DecSepPart;
                     break;
 
                 case ParserPartEnum.DecSepPart:
-                    str = parserState.chrStr.ToString();
+                    str = state.chrStr.ToString();
                     if (SIPrefixes.IsSIPrefix(str, out exp))
                     {
                         // Check a more 'greedy' variety to avoid mistaking prefix words for single chars
-                        FindGreedySIMatch(strValue, parserState, ref i, ref exp);
+                        FindGreedySIMatch(strValue, state, ref i, ref exp);
 
-                        parserState.exp += exp;
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
-                        parserState.siPrefixFound = true;
+                        state.exp += exp;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.PostDecPart;
+                        state.siPrefixFound = true;
                         break;
                     }
 
                     if (SIPrefixes.IsExpPrefix(str))
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
                     if (IsDecSep(str, formattingOptions))
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
-                    if (IsUnit(str, unitOptions, out parserState.unitConvFactor) > 0)
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
                     if (IsNumeric(ch)) // This has to happen after the string is checked, since str is one character behind ch
                     {
                         // Should not happen on first iteration. Should also not happen on later iterations, since DecSep or ParseStreamHandleUnit should have advanced the state before the postDec part begins.
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Discarding '{parserState.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", parserState.currentPart, parserState.chrStr.ToString()));
-                        parserState.chrStr.Clear(); // Discard unidentifiable decSep 
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart, state.chrStr.ToString()));
+                        state.chrStr.Clear(); // Discard unidentifiable decSep 
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     i++;
                     break;
 
                 case ParserPartEnum.PostDecPart:
-                    str = parserState.chrStr.ToString();
-                    if (!parserState.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
+                    str = state.chrStr.ToString();
+                    if (!state.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
                     {
                         // Check a more 'greedy' variety to avoid mistaking prefix words for single chars
-                        FindGreedySIMatch(strValue, parserState, ref i, ref exp);
+                        FindGreedySIMatch(strValue, state, ref i, ref exp);
 
-                        parserState.exp += exp;
-                        parserState.expSign = 1;
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.SuffixPart;
-                        parserState.siPrefixFound = true;
+                        state.exp += exp;
+                        state.expSign = 1;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.SuffixPart;
+                        state.siPrefixFound = true;
                         break;
                     }
 
                     if (SIPrefixes.IsExpPrefix(str))
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
-                    if (IsUnit(str, unitOptions, out var unitConvFactor) > 0)
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.unitConvFactor = unitConvFactor;
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.SuffixPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.SuffixPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PostDecNum;
+                        state.currentPart = ParserPartEnum.PostDecNum;
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
 
                     i++;
                     break;
@@ -196,151 +195,151 @@ public static class Parser
                 case ParserPartEnum.PostDecNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append for next run
+                        state.decStr.Append(ch); // Append for next run
                         i++;
                         break;
                     }
 
-                    parserState.postDecVal = (decimal) Pow(10, -1 * parserState.decStr.Length) * Decimal.Parse(parserState.decStr.ToString());
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.PostPostDecPart;
+                    state.postDecVal = (decimal) Pow(10, -1 * state.decStr.Length) * Decimal.Parse(state.decStr.ToString());
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.PostPostDecPart;
                     break;
 
                 case ParserPartEnum.PostPostDecPart:
-                    str = parserState.chrStr.ToString();
-                    if (!parserState.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
+                    str = state.chrStr.ToString();
+                    if (!state.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
                     {
                         // Check a more 'greedy' variety to avoid mistaking prefix words for single chars
-                        FindGreedySIMatch(strValue, parserState, ref i, ref exp);
+                        FindGreedySIMatch(strValue, state, ref i, ref exp);
 
-                        parserState.exp += exp;
-                        parserState.expSign = 1;
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.SuffixPart;
-                        parserState.siPrefixFound = true;
+                        state.exp += exp;
+                        state.expSign = 1;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.SuffixPart;
+                        state.siPrefixFound = true;
                         break;
                     }
 
                     if (SIPrefixes.IsExpPrefix(str))
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
-                    if (IsUnit(str, unitOptions, out parserState.unitConvFactor) > 0)
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in PostPostDecPart (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in PostPostDecPart (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     i++;
                     break;
 
                 case ParserPartEnum.ExpPart:
                     if (IsSign(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.ExpSign;
+                        state.currentPart = ParserPartEnum.ExpSign;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.ExpNum;
+                        state.currentPart = ParserPartEnum.ExpNum;
                         break;
                     }
 
                     i++;
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in ExpPart.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in ExpPart.", ch));
                     break;
 
                 case ParserPartEnum.ExpSign:
                     if (IsSign(ch))
                     {
                         if (IsNegativeSign(ch))
-                            parserState.expSign *= -1;
+                            state.expSign *= -1;
                         i++;
                         break;
                     }
 
-                    parserState.currentPart = ParserPartEnum.ExpNum;
+                    state.currentPart = ParserPartEnum.ExpNum;
                     break;
 
                 case ParserPartEnum.ExpNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append for next run
+                        state.decStr.Append(ch); // Append for next run
                         i++;
                         break;
                     }
 
-                    parserState.exp += parserState.expSign * Int32.Parse(parserState.decStr.ToString());
-                    parserState.expSign = 1;
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.SuffixPart;
+                    state.exp += state.expSign * Int32.Parse(state.decStr.ToString());
+                    state.expSign = 1;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.SuffixPart;
                     break;
 
                 case ParserPartEnum.SuffixPart:
-                    str = parserState.chrStr.ToString();
-                    if (!parserState.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
+                    str = state.chrStr.ToString();
+                    if (!state.siPrefixFound && SIPrefixes.IsSIPrefix(str, out exp))
                     {
                         // Check a more 'greedy' variety to avoid mistaking prefix words for single chars
-                        FindGreedySIMatch(strValue, parserState, ref i, ref exp);
+                        FindGreedySIMatch(strValue, state, ref i, ref exp);
 
-                        parserState.exp += exp;
-                        parserState.expSign = 1;
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.UnitPart;
-                        parserState.siPrefixFound = true;
+                        state.exp += exp;
+                        state.expSign = 1;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.UnitPart;
+                        state.siPrefixFound = true;
                         break;
                     }
 
-                    if (IsUnit(str, unitOptions, out parserState.unitConvFactor) > 0)
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in Suffix (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in Suffix (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     i++;
                     break;
 
                 case ParserPartEnum.UnitPart:
-                    str = parserState.chrStr.ToString();
-                    if (IsUnit(str, unitOptions, out parserState.unitConvFactor) > 0)
+                    str = state.chrStr.ToString();
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in UnitPart (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in UnitPart (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     i++;
                     break;
 
@@ -354,10 +353,10 @@ public static class Parser
             }
         }
 
-        if (!parserState.siPrefixFound && parserState.alternateUnitWarning != null)
-            parserState.warnings.Add(parserState.alternateUnitWarning);
+        if (!state.siPrefixFound && state.alternateUnitWarning != null)
+            state.warnings.Add(state.alternateUnitWarning);
 
-        return parserState;
+        return state;
     }
 
     #endregion
@@ -367,29 +366,29 @@ public static class Parser
     internal static double ParseStream(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions? formattingOptions = null,
                                        List<Exception>? warnings = null)
     {
-        var parserState = ParseStreamStateMachine(stringReader, unitOptions, formattingOptions ?? FormattingOptions.Default);
+        var state = ParseStreamInternal(stringReader, unitOptions, formattingOptions ?? FormattingOptions.Default);
 
         double value;
-        if (parserState.postDecVal != 0)
-            value = (double) parserState.preDecVal + (double) parserState.postDecVal;
+        if (state.postDecVal != 0)
+            value = (double) state.preDecVal + (double) state.postDecVal;
         else
-            value = (double) parserState.preDecVal;
+            value = (double) state.preDecVal;
 
-        warnings?.AddRange(parserState.warnings);
+        warnings?.AddRange(state.warnings);
 
-        return parserState.sign * value * parserState.unitConvFactor * Pow(10, parserState.expSign * parserState.exp);
+        return state.sign * value * state.unitConvFactor * Pow(10, state.expSign * state.exp);
     }
 
     // This is a stripped down version of ParseStringStateMachine that does not require look-ahead, at the expense of unit and SI identification completeness
-    private static ParserState ParseStreamStateMachine(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOption)
+    private static ParserState ParseStreamInternal(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOption)
     {
-        var parserState = new ParserState();
+        var state = new ParserState();
 
         var oldState = ParserPartEnum.EndOfStrPart;
         var advancedStream = true;
         var lastIteration = false;
 
-        while (parserState.currentPart != ParserPartEnum.EndOfStrPart && !lastIteration)
+        while (state.currentPart != ParserPartEnum.EndOfStrPart && !lastIteration)
         {
             char ch;
             if (stringReader.Peek() > -1)
@@ -404,326 +403,326 @@ public static class Parser
                 lastIteration = true; // Allow the state machine to process the previous iteration one last time before coming to a halt. Space is a neutral character and will mean no harm.
             }
 
-            if (oldState == parserState.currentPart && !advancedStream)
+            if (oldState == state.currentPart && !advancedStream)
                 throw new Exception("Internal Error: Neither state nor i have changed during a loop run.");
 
             advancedStream = false; // Assume no progress was requested
-            oldState = parserState.currentPart;
+            oldState = state.currentPart;
 
             string str;
             bool siFound;
             bool unitFound;
-            switch (parserState.currentPart)
+            switch (state.currentPart)
             {
                 case ParserPartEnum.PreDecPart:
                     if (IsSign(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecSign;
+                        state.currentPart = ParserPartEnum.PreDecSign;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecNum;
+                        state.currentPart = ParserPartEnum.PreDecNum;
                         break;
                     }
 
                     AdvanceStream(ref stringReader, out advancedStream); // Ignore unknown character
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecPart.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecPart.", ch));
                     break;
 
                 case ParserPartEnum.PreDecSign:
                     if (IsSign(ch))
                     {
                         if (IsNegativeSign(ch)) // Only minus sign changes the sign ...
-                            parserState.sign *= -1;
+                            state.sign *= -1;
                         AdvanceStream(ref stringReader, out advancedStream);
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PreDecNum;
+                        state.currentPart = ParserPartEnum.PreDecNum;
                         break;
                     }
 
                     AdvanceStream(ref stringReader, out advancedStream);
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecSign.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in PreDecSign.", ch));
                     break;
 
                 case ParserPartEnum.PreDecNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append the number to the decStr
+                        state.decStr.Append(ch); // Append the number to the decStr
                         AdvanceStream(ref stringReader, out advancedStream);
                         break;
                     }
 
-                    parserState.preDecVal = Int32.Parse(parserState.decStr.ToString());
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.DecSepPart;
+                    state.preDecVal = Int32.Parse(state.decStr.ToString());
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.DecSepPart;
                     break;
 
                 case ParserPartEnum.DecSepPart:
-                    str = parserState.chrStr.ToString();
+                    str = state.chrStr.ToString();
 
                     if (SIPrefixes.IsExpPrefix(str) &&
                         (IsNumeric((char) stringReader.Peek(1)) ||
                          IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
                     {
                         // Valid format of exponential notation found
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
                     if (IsDecSep(str, formattingOption))
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
                     // Handle SI and unit strings
-                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, parserState, out _, out _))
+                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, state, out _, out _))
                     {
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
                     if (IsNumeric(ch)) // This has to happen after the string is checked, since str is one character behind ch
                     {
                         // Should not happen on first iteration. Should also not happen on later iterations, since DecSep or ParseStreamHandleUnit should have advanced the state before the postDec part begins.
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Discarding '{parserState.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", parserState.currentPart, parserState.chrStr.ToString()));
-                        parserState.chrStr.Clear(); // Discard unidentifiable decSep 
-                        parserState.currentPart = ParserPartEnum.PostDecPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart, state.chrStr.ToString()));
+                        state.chrStr.Clear(); // Discard unidentifiable decSep 
+                        state.currentPart = ParserPartEnum.PostDecPart;
                         break;
                     }
 
                     if (IsOperator(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
                         break;
                     }
 
                     if (IsInvalidChar(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     AdvanceStream(ref stringReader, out advancedStream);
                     break;
 
                 case ParserPartEnum.PostDecPart:
-                    str = parserState.chrStr.ToString();
+                    str = state.chrStr.ToString();
                     if (SIPrefixes.IsExpPrefix(str) &&
                         (IsNumeric((char) stringReader.Peek(1)) ||
                          IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
                     {
                         // Valid format of exponential notation found
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
-                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, parserState, out _, out _))
+                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, state, out _, out _))
                     {
-                        parserState.currentPart = ParserPartEnum.SuffixPart;
+                        state.currentPart = ParserPartEnum.SuffixPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.PostDecNum;
+                        state.currentPart = ParserPartEnum.PostDecNum;
                         break;
                     }
 
                     if (IsOperator(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
                         break;
                     }
 
                     if (IsInvalidChar(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     AdvanceStream(ref stringReader, out advancedStream);
                     break;
 
                 case ParserPartEnum.PostDecNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append for next run
+                        state.decStr.Append(ch); // Append for next run
                         AdvanceStream(ref stringReader, out advancedStream);
                         break;
                     }
 
-                    parserState.postDecVal = (decimal) Pow(10, -1 * parserState.decStr.Length) * Decimal.Parse(parserState.decStr.ToString());
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.PostPostDecPart;
+                    state.postDecVal = (decimal) Pow(10, -1 * state.decStr.Length) * Decimal.Parse(state.decStr.ToString());
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.PostPostDecPart;
                     break;
 
                 case ParserPartEnum.PostPostDecPart:
-                    str = parserState.chrStr.ToString();
+                    str = state.chrStr.ToString();
                     if (SIPrefixes.IsExpPrefix(str) &&
                         (IsNumeric((char) stringReader.Peek(1)) ||
                          IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
                     {
                         // Valid format of exponential notation found
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.ExpPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.ExpPart;
                         break;
                     }
 
-                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, parserState, out siFound, out unitFound))
+                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, state, out siFound, out unitFound))
                     {
                         if (siFound)
-                            parserState.currentPart = ParserPartEnum.SuffixPart; // If only SI is found, goto suffix
+                            state.currentPart = ParserPartEnum.SuffixPart; // If only SI is found, goto suffix
                         if (unitFound)
-                            parserState.currentPart = ParserPartEnum.EndOfStrPart; // If unit symbol is found, go to eostr
+                            state.currentPart = ParserPartEnum.EndOfStrPart; // If unit symbol is found, go to eostr
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in PostPostDecPart (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in PostPostDecPart (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsOperator(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
                         break;
                     }
 
                     if (IsInvalidChar(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     AdvanceStream(ref stringReader, out advancedStream);
                     break;
 
                 case ParserPartEnum.ExpPart:
                     if (IsSign(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.ExpSign;
+                        state.currentPart = ParserPartEnum.ExpSign;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.ExpNum;
+                        state.currentPart = ParserPartEnum.ExpNum;
                         break;
                     }
 
                     AdvanceStream(ref stringReader, out advancedStream);
-                    parserState.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in ExpPart.", ch));
+                    state.warnings.Add(new UnknownCharacterException($"Unknown character '{ch}' ignored in ExpPart.", ch));
                     break;
 
                 case ParserPartEnum.ExpSign:
                     if (IsSign(ch))
                     {
                         if (IsNegativeSign(ch))
-                            parserState.expSign *= -1;
+                            state.expSign *= -1;
                         AdvanceStream(ref stringReader, out advancedStream);
                         break;
                     }
 
-                    parserState.currentPart = ParserPartEnum.ExpNum;
+                    state.currentPart = ParserPartEnum.ExpNum;
                     break;
 
                 case ParserPartEnum.ExpNum:
                     if (IsNumeric(ch))
                     {
-                        parserState.decStr.Append(ch); // Append for next run
+                        state.decStr.Append(ch); // Append for next run
                         AdvanceStream(ref stringReader, out advancedStream);
                         break;
                     }
 
-                    parserState.exp += parserState.expSign * Int32.Parse(parserState.decStr.ToString());
-                    parserState.expSign = 1;
-                    parserState.decStr.Clear();
-                    parserState.currentPart = ParserPartEnum.SuffixPart;
+                    state.exp += state.expSign * Int32.Parse(state.decStr.ToString());
+                    state.expSign = 1;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.SuffixPart;
                     break;
 
                 case ParserPartEnum.SuffixPart:
-                    str = parserState.chrStr.ToString();
-                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, parserState, out siFound, out unitFound))
+                    str = state.chrStr.ToString();
+                    if (ParseStreamHandleUnit(stringReader, unitOptions, formattingOption, state, out siFound, out unitFound))
                     {
                         if (siFound)
-                            parserState.currentPart = ParserPartEnum.UnitPart; // If only SI is found, goto suffix
+                            state.currentPart = ParserPartEnum.UnitPart; // If only SI is found, goto suffix
                         if (unitFound)
-                            parserState.currentPart = ParserPartEnum.EndOfStrPart; // If unit symbol is found, go to eostr
+                            state.currentPart = ParserPartEnum.EndOfStrPart; // If unit symbol is found, go to eostr
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in Suffix (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in Suffix (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsOperator(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
                         break;
                     }
 
                     if (IsInvalidChar(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     AdvanceStream(ref stringReader, out advancedStream);
                     break;
 
                 case ParserPartEnum.UnitPart:
-                    str = parserState.chrStr.ToString();
-                    if (IsUnit(str, unitOptions, out parserState.unitConvFactor) > 0)
+                    str = state.chrStr.ToString();
+                    if (IsUnit(str, unitOptions, ref state.unitConvFactor) > 0)
                     {
-                        parserState.chrStr.Clear(); // Reset the appending
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.chrStr.Clear(); // Reset the appending
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsNumeric(ch))
                     {
-                        parserState.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in UnitPart (unsupported syntax).", parserState.currentPart, str + ch));
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart;
+                        state.warnings.Add(new UnexpectedSyntaxException($"Unexpected numeric '{ch}' in UnitPart (unsupported syntax).", state.currentPart, str + ch));
+                        state.currentPart = ParserPartEnum.EndOfStrPart;
                         break;
                     }
 
                     if (IsOperator(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading, since we don't handle math
                         break;
                     }
 
                     if (IsInvalidChar(ch))
                     {
-                        parserState.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
+                        state.currentPart = ParserPartEnum.EndOfStrPart; // Abort reading
                         break;
                     }
 
                     if (!IsBlank(ch))
-                        parserState.chrStr.Append(ch); // Append for next run
+                        state.chrStr.Append(ch); // Append for next run
                     AdvanceStream(ref stringReader, out advancedStream);
                     break;
 
@@ -733,14 +732,14 @@ public static class Parser
                     break;
 
                 default:
-                    throw new InvalidOperationException($"Internal Error: ParsePart is in an invalid state at '{parserState.currentPart}'.");
+                    throw new InvalidOperationException($"Internal Error: ParsePart is in an invalid state at '{state.currentPart}'.");
             }
         }
 
-        if (!parserState.siPrefixFound && parserState.alternateUnitWarning != null)
-            parserState.warnings.Add(parserState.alternateUnitWarning);
+        if (!state.siPrefixFound && state.alternateUnitWarning != null)
+            state.warnings.Add(state.alternateUnitWarning);
 
-        return parserState;
+        return state;
     }
 
     private static int AdvanceStream(ref StringReaderLookahead streamReader, out bool advancedStream)
@@ -757,7 +756,7 @@ public static class Parser
     }
 
     private static bool ParseStreamHandleUnit(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOptions,
-                                              ParserState parserState, out bool siFound, out bool unitFound)
+                                              ParserState state, out bool siFound, out bool unitFound)
     {
         // Use look-ahead to the next whitespace, number, operand or invalid character
         siFound = false;
@@ -783,19 +782,19 @@ public static class Parser
         var strValue = lookAheadStr.ToString();
 
         // check for unit
-        var unitCnt = DiscoverUnitAtEndOfString(ref strValue, unitOptions, formattingOptions, parserState);
+        var unitCnt = DiscoverUnitAtEndOfString(ref strValue, unitOptions, formattingOptions, state);
         if (unitCnt > 0)
             unitFound = true;
 
         if (SIPrefixes.IsSIPrefix(strValue, out var exp))
         {
             // Check a more 'greedy' variety to avoid mistaking prefix words for single chars
-            FindGreedySIMatch(strValue, parserState, ref iStr, ref exp);
+            FindGreedySIMatch(strValue, state, ref iStr, ref exp);
 
-            parserState.exp += exp;
-            parserState.chrStr.Clear(); // Reset the appending
+            state.exp += exp;
+            state.chrStr.Clear(); // Reset the appending
 
-            parserState.siPrefixFound = true;
+            state.siPrefixFound = true;
             siFound = true;
         }
 
@@ -814,12 +813,12 @@ public static class Parser
 
     #region SIUnitMatch
 
-    private static int DiscoverUnitAtEndOfString(ref string strValue, UnitOptions unitOptions, FormattingOptions formattingOptions, ParserState parserState)
+    private static int DiscoverUnitAtEndOfString(ref string strValue, UnitOptions unitOptions, FormattingOptions formattingOptions, ParserState state)
     {
         if (strValue.Length == 0)
             return 0;
 
-        parserState.alternateUnitWarning = null;
+        state.alternateUnitWarning = null;
 
         var unitCnt = 0;
 
@@ -840,12 +839,12 @@ public static class Parser
                     if (unitCandidate == unit.Symbol)
                     {
                         // Unit found
-                        IsUnit(unitCandidate, unitOptions, out parserState.unitConvFactor);
+                        IsUnit(unitCandidate, unitOptions, ref state.unitConvFactor);
 
                         unitCnt++;
 
                         strValue = SubstringTolerant(strValue, 0, k) + SubstringTolerant(strValue, k + unit.Symbol.Length, strValue.Length);
-                        parserState.alternateUnitWarning = new AmbiguousUnitException($"(Alternate) Unit \'{unit.Symbol}\' is ambiguous with a SI prefix \'{ambPrefix}\' and has been ignored. \nPlease enter unit and prefix if this prefix is desired.", unit, ambPrefix);
+                        state.alternateUnitWarning = new AmbiguousUnitException($"(Alternate) Unit \'{unit.Symbol}\' is ambiguous with a SI prefix \'{ambPrefix}\' and has been ignored. \nPlease enter unit and prefix if this prefix is desired.", unit, ambPrefix);
 
                         break;
                     }
@@ -862,7 +861,7 @@ public static class Parser
                 if (StrEndsWithPattern(strValue, unit.Symbol))
                 {
                     var unitLength = unit.Symbol.Length;
-                    parserState.unitConvFactor = unit.BaseConversionFactor;
+                    state.unitConvFactor = unit.BaseConversionFactor;
                     SubstringTolerant(strValue, strValue.Length - unitLength, unitLength);
                     strValue = SubstringTolerant(strValue, 0, strValue.Length - unitLength);
 
@@ -876,7 +875,7 @@ public static class Parser
         return unitCnt;
     }
 
-    private static void FindGreedySIMatch(string strValue, ParserState parserState, ref int i, ref int exp)
+    private static void FindGreedySIMatch(string strValue, ParserState state, ref int i, ref int exp)
     {
         var k = i;
         var expAlt = 0;
@@ -884,8 +883,8 @@ public static class Parser
 
         while (k < strValue.Length && !IsNumeric(strValue[k]))
         {
-            parserState.chrStr.Append(strValue[k]);
-            var str = parserState.chrStr.ToString();
+            state.chrStr.Append(strValue[k]);
+            var str = state.chrStr.ToString();
 
             if (SIPrefixes.IsSIPrefix(str, out var expAltTmp))
             {

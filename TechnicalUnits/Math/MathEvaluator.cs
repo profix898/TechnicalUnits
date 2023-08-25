@@ -1,443 +1,402 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using TechnicalUnits.Formatting;
 using TechnicalUnits.Internal;
 using TechnicalUnits.Math.Expressions;
+using static System.Char;
 
 namespace TechnicalUnits.Math;
 
-public sealed class MathEvaluator : IDisposable
+public sealed class MathEvaluator
 {
-    private readonly StringBuilder buffer;
-    private readonly Stack<double> calculationStack;
-    private readonly Dictionary<string, MathExpressionBase> expressionCache;
-    private readonly Queue<MathExpressionBase> expressionQueue;
-    private readonly List<string> innerFunctions;
-    private readonly Stack<double> parameters;
+    private readonly UnitOptions unitOptions = new UnitOptions();
 
-    //instance scope to optimize reuse
-    private readonly Stack<string> symbolStack;
-    private readonly UnitOptions unitOptions;
-    private char currentChar;
-    private StringReaderLookahead? expressionReader;
-    private ExpressionAtomType lastType;
-    private uint nestedFunctionDepth;
-    private uint nestedGroupDepth;
+    private readonly List<string> functionList;
+    private readonly Dictionary<string, ExpressionBase> expressionCache;
 
-    private List<Exception> warnings;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="MathEvaluator" /> class.
-    /// </summary>
     public MathEvaluator()
     {
-        Variables = new VariableWorkspace(this);
-        innerFunctions = new List<string>(FunctionMathExpression.GetFunctionNames());
-        innerFunctions.Sort();
-        Functions = new ReadOnlyCollection<string>(innerFunctions);
-        expressionCache = new Dictionary<string, MathExpressionBase>(StringComparer.OrdinalIgnoreCase);
-        symbolStack = new Stack<string>();
-        expressionQueue = new Queue<MathExpressionBase>();
-        buffer = new StringBuilder();
-        calculationStack = new Stack<double>();
-        parameters = new Stack<double>(2);
-        nestedFunctionDepth = 0;
-        nestedGroupDepth = 0;
+        functionList = new List<string>(FunctionExpression.GetFunctionNames());
+        functionList.Sort();
 
-        unitOptions = new UnitOptions();
+        expressionCache = new Dictionary<string, ExpressionBase>(StringComparer.OrdinalIgnoreCase);
     }
 
-    public double Answer
+    public Dictionary<string, double> Constants { get; } = new Dictionary<string, double>()
     {
-        get { return Variables[VariableWorkspace.AnswerVariable]; }
-    }
+        { "pi", System.Math.PI },
+        { "e", System.Math.E }
+    };
 
-    public ReadOnlyCollection<string> Functions { get; }
+    #region Functions
 
-    public VariableWorkspace Variables { get; }
+    public IReadOnlyList<string> Functions => functionList;
 
-    public double Evaluate(string expression, List<Exception>? warnings = null)
-    {
-        if (String.IsNullOrEmpty(expression))
-            throw new ArgumentNullException(nameof(expression));
-
-        this.warnings = warnings ?? new List<Exception>();
-
-        expressionReader = new StringReaderLookahead(expression);
-        symbolStack.Clear();
-        nestedFunctionDepth = 0;
-        nestedGroupDepth = 0;
-        expressionQueue.Clear();
-
-        ParseExpressionToQueue();
-
-        var result = CalculateFromQueue();
-        Variables[VariableWorkspace.AnswerVariable] = result;
-
-        return result;
-    }
-
-    public void RegisterFunction(string functionName, MathExpressionBase expression)
+    public void RegisterFunction(string functionName, ExpressionBase expression)
     {
         if (String.IsNullOrEmpty(functionName))
             throw new ArgumentNullException(nameof(functionName));
         if (expression == null)
             throw new ArgumentNullException(nameof(expression));
 
-        if (innerFunctions.BinarySearch(functionName) >= 0)
-        {
-            throw new ArgumentException(String.Format(CultureInfo.CurrentCulture, "The function name '{0}' is already registered.", functionName), nameof(functionName));
-        }
+        if (functionList.BinarySearch(functionName) >= 0)
+            throw new ArgumentException($"The function name '{functionName}' is already registered.", nameof(functionName));
 
-        innerFunctions.Add(functionName);
-        innerFunctions.Sort();
+        functionList.Add(functionName);
+        functionList.Sort();
         expressionCache.Add(functionName, expression);
     }
 
-    internal bool IsFunction(string name)
+    private bool IsFunction(string name)
     {
-        return innerFunctions.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
+        return functionList.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
     }
 
-    private void ParseExpressionToQueue()
+    #endregion
+
+    public double Evaluate(string expression, List<Exception>? warnings = null)
     {
+        if (String.IsNullOrEmpty(expression))
+            throw new ArgumentNullException(nameof(expression));
+
+        using var state = new EvaluatorState(expression, warnings);
+
+        ParseExpression(state);
+
+        return EvaluateExpression(state);
+    }
+
+    #region Parser
+
+    private static char PeekNextNonWhitespaceChar(EvaluatorState state)
+    {
+        var peekChar = state.expressionReader.Peek();
+        while (peekChar != -1 && IsWhiteSpace((char) peekChar))
+        {
+            state.expressionReader.Read();
+            peekChar = state.expressionReader.Peek();
+        }
+
+        return (char) peekChar;
+    }
+
+    private void ParseExpression(EvaluatorState state)
+    {
+        // Parse expression
         var lastChar = '\0';
-        currentChar = '\0';
-        lastType = ExpressionAtomType.Unknown;
+        state.currentChar = '\0';
+        state.lastType = TokenType.Unknown;
 
         do
         {
-            // last non white space char
-            if (!Char.IsWhiteSpace(currentChar))
-                lastChar = currentChar;
+            if (!IsWhiteSpace(state.currentChar))
+                lastChar = state.currentChar;
 
-            currentChar = (char) expressionReader.Peek(); // some checks depend on the expression reader containing the current char as well
+            state.currentChar = (char) state.expressionReader.Peek();
 
-            if (TryNumber(lastChar, lastType))
+            if (ParseNumber(state, lastChar))
                 continue;
 
-            currentChar = (char) expressionReader
-                .Read(); // some checks depend on the expression reader _not_ containing the current char and read it from a private variable.
+            state.currentChar = (char) state.expressionReader.Read();
 
-            if (Char.IsWhiteSpace(currentChar))
+            if (IsWhiteSpace(state.currentChar))
                 continue;
 
-            if (TryString())
+            if (ParseString(state))
                 continue;
 
-            if (TryStartGroup())
+            if (ParseGroupOpen(state))
                 continue;
 
-            if (TryComma())
+            if (ParseComma(state))
                 continue;
 
-            if (TryOperator())
+            if (ParseOperator(state))
                 continue;
 
-            if (TryEndGroup())
+            if (ParseGroupClose(state))
                 continue;
 
-            if (TryConvert())
+            if (ParseConversion(state))
                 continue;
 
-            throw new MathEvaluatorException("Invalid character: " + currentChar);
+            throw new MathEvaluatorException($"Invalid character '{state.currentChar}'.");
         }
-        while (expressionReader.Peek() != -1);
+        while (state.expressionReader.Peek() != -1);
 
-        ProcessSymbolStack();
+        // Process symbol stack
+        while (state.symbolStack.Count > 0)
+        {
+            var symbol = state.symbolStack.Pop();
+            if (symbol.Length == 1 && symbol == "(")
+                throw new MathEvaluatorException("Unbalanced parentheses.");
+
+            var expression = GetExpressionFromSymbol(symbol);
+            state.expressionQueue.Enqueue(expression);
+        }
     }
 
-    private bool TryConvert()
+    private ExpressionBase GetExpressionFromSymbol(string symbol)
     {
-        if (currentChar != '[')
+        ExpressionBase expression;
+        if (expressionCache.TryGetValue(symbol, out var value))
+            expression = value;
+        else if (OperatorExpression.IsOperator(symbol))
+        {
+            expression = new OperatorExpression(symbol);
+            expressionCache.Add(symbol, expression);
+        }
+        else if (FunctionExpression.IsFunction(symbol))
+        {
+            expression = new FunctionExpression(symbol, false);
+            expressionCache.Add(symbol, expression);
+        }
+        else if (ConvertExpression.IsConvertExpression(symbol))
+        {
+            expression = new ConvertExpression(symbol);
+            expressionCache.Add(symbol, expression);
+        }
+        else
+            throw new MathEvaluatorException($"Invalid symbol '{symbol}' on stack.");
+
+        return expression;
+    }
+
+    #region Tokens
+
+    private bool ParseString(EvaluatorState state)
+    {
+        if (!IsLetter(state.currentChar))
             return false;
 
-        buffer.Length = 0;
-        buffer.Append(currentChar);
+        state.buffer.Length = 0;
+        state.buffer.Append(state.currentChar);
 
-        var p = (char) expressionReader.Peek();
-        while (Char.IsLetter(p) || Char.IsWhiteSpace(p) || p == '>' || p == ']')
+        var peekChar = (char) state.expressionReader.Peek();
+        while (IsLetter(peekChar) || IsNumber(peekChar))
         {
-            if (!Char.IsWhiteSpace(p))
-                buffer.Append((char) expressionReader.Read());
-            else
-                expressionReader.Read();
-
-            if (p == ']')
-                break;
-
-            p = (char) expressionReader.Peek();
+            state.buffer.Append((char) state.expressionReader.Read());
+            peekChar = (char) state.expressionReader.Peek();
         }
 
-        if (ConvertMathExpression.IsConvertExpression(buffer.ToString()))
+        if (Constants.ContainsKey(state.buffer.ToString()))
         {
-            var e = GetExpressionFromSymbol(buffer.ToString());
-            expressionQueue.Enqueue(e);
-            lastType = ExpressionAtomType.Convert;
+            var value = Constants[state.buffer.ToString()];
+            var expression = new NumberExpression(value);
+            state.expressionQueue.Enqueue(expression);
+
             return true;
         }
 
-        throw new MathEvaluatorException("Invalid convertion expression: " + buffer);
-    }
-
-    private bool TryString()
-    {
-        if (!Char.IsLetter(currentChar))
-            return false;
-
-        buffer.Length = 0;
-        buffer.Append(currentChar);
-
-        var p = (char) expressionReader.Peek();
-        while (Char.IsLetter(p) || Char.IsNumber(p))
+        if (IsFunction(state.buffer.ToString()))
         {
-            buffer.Append((char) expressionReader.Read());
-            p = (char) expressionReader.Peek();
-        }
-
-        if (Variables.ContainsKey(buffer.ToString()))
-        {
-            var value = Variables[buffer.ToString()];
-            var expression = new NumberMathExpression(value);
-            expressionQueue.Enqueue(expression);
+            state.symbolStack.Push(state.buffer.ToString());
+            state.nestedFunctionDepth++;
 
             return true;
         }
 
-        if (IsFunction(buffer.ToString()))
-        {
-            symbolStack.Push(buffer.ToString());
-            nestedFunctionDepth++;
-            return true;
-        }
-
-        throw new MathEvaluatorException("Invalid function or variable: " + buffer);
+        throw new MathEvaluatorException($"Invalid function or variable '{state.buffer}'.");
     }
 
-    private bool TryStartGroup()
+    private bool ParseNumber(EvaluatorState state, char lastChar)
     {
-        if (currentChar != '(')
+        var lastType = state.lastType;
+
+        var isNumber = NumberExpression.IsNumber(state.currentChar);
+        var isNegative = NumberExpression.IsNegativeSign(state.currentChar) &&
+                         (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
+        var isPositive = NumberExpression.IsPositiveSign(state.currentChar) &&
+                         (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
+
+        if (!isNumber && !isNegative && !isPositive)
             return false;
 
-        var cnw = PeekNextNonWhitespaceChar();
-        if (cnw == ',' || cnw == ';')
-            throw new MathEvaluatorException("Invalid character: " + cnw);
+        // Parse number (without unit, but supporting SI prefix notation)
+        var value = Parser.ParseStream(state.expressionReader, unitOptions, FormattingOptions.Default, state.warnings);
 
-        symbolStack.Push(currentChar.ToString());
-        nestedGroupDepth++;
+        var expression = new NumberExpression(value);
+        state.expressionQueue.Enqueue(expression);
 
-        lastType = ExpressionAtomType.GroupOpen;
+        state.lastType = TokenType.Number;
         return true;
     }
 
-    private bool TryComma()
+    private bool ParseOperator(EvaluatorState state)
     {
-        if (currentChar != ',' || currentChar != ';')
-            return false;
-
-        if (nestedFunctionDepth <= 0 ||
-            nestedFunctionDepth < nestedGroupDepth)
-            throw new MathEvaluatorException("Invalid character: " + currentChar);
-
-        var nextChar = PeekNextNonWhitespaceChar();
-        if (nextChar == ')' || nextChar == ',' || nextChar == ';')
-            throw new MathEvaluatorException("Invalid character: " + currentChar);
-
-        lastType = ExpressionAtomType.Comma;
-        return true;
-    }
-
-    private char PeekNextNonWhitespaceChar()
-    {
-        var next = expressionReader.Peek();
-        while (next != -1 && Char.IsWhiteSpace((char) next))
-        {
-            expressionReader.Read();
-            next = expressionReader.Peek();
-        }
-        return (char) next;
-    }
-
-    private bool TryEndGroup()
-    {
-        if (currentChar != ')')
-            return false;
-
-        var hasStart = false;
-
-        while (symbolStack.Count > 0)
-        {
-            var p = symbolStack.Pop();
-            if (p == "(")
-            {
-                hasStart = true;
-
-                if (symbolStack.Count == 0)
-                    break;
-
-                var n = symbolStack.Peek();
-                if (IsFunction(n))
-                {
-                    p = symbolStack.Pop();
-                    var f = GetExpressionFromSymbol(p);
-                    expressionQueue.Enqueue(f);
-                    nestedFunctionDepth--;
-                }
-
-                nestedGroupDepth--;
-
-                break;
-            }
-
-            var e = GetExpressionFromSymbol(p);
-            expressionQueue.Enqueue(e);
-        }
-
-        if (!hasStart)
-            throw new MathEvaluatorException("Unbalanced parentheses.");
-
-        lastType = ExpressionAtomType.GroupClose;
-        return true;
-    }
-
-    private bool TryOperator()
-    {
-        if (!OperatorMathExpression.IsOperator(currentChar))
+        if (!OperatorExpression.IsOperator(state.currentChar))
             return false;
 
         bool repeat;
-        var s = currentChar.ToString();
+        var str = state.currentChar.ToString();
 
         do
         {
-            var p = symbolStack.Count == 0 ? String.Empty : symbolStack.Peek();
+            var symbol = (state.symbolStack.Count == 0) ? String.Empty : state.symbolStack.Peek();
             repeat = false;
-            if (symbolStack.Count == 0)
-                symbolStack.Push(s);
-            else if (p == "(")
-                symbolStack.Push(s);
-            else if (Precedence(s) > Precedence(p))
-                symbolStack.Push(s);
+            if (state.symbolStack.Count == 0)
+                state.symbolStack.Push(str);
+            else if (symbol == "(")
+                state.symbolStack.Push(str);
+            else if (Precedence(str) > Precedence(symbol))
+                state.symbolStack.Push(str);
             else
             {
-                var e = GetExpressionFromSymbol(symbolStack.Pop());
-                expressionQueue.Enqueue(e);
+                var e = GetExpressionFromSymbol(state.symbolStack.Pop());
+                state.expressionQueue.Enqueue(e);
                 repeat = true;
             }
         }
         while (repeat);
 
-        lastType = ExpressionAtomType.OperatorSymbol;
+        state.lastType = TokenType.OperatorSymbol;
         return true;
+
+        // Local function: Precedence
+        static int Precedence(string str) => (str.Length == 1 && (str[0] == '*' || str[0] == '/')) ? 2 : 1;
     }
 
-    private bool TryNumber(char lastChar, ExpressionAtomType lastType)
+    private bool ParseGroupOpen(EvaluatorState state)
     {
-        var isNumber = NumberMathExpression.IsNumber(currentChar);
-
-        // only negative when last char is group start or symbol
-        var isNegative = NumberMathExpression.IsNegativeSign(currentChar) &&
-                         (lastChar == '\0' || lastChar == '(' || lastType == ExpressionAtomType.OperatorSymbol);
-        var isPositive = NumberMathExpression.IsPositiveSign(currentChar) &&
-                         (lastChar == '\0' || lastChar == '(' || lastType == ExpressionAtomType.OperatorSymbol);
-
-        if (!isNumber && !isNegative && !isPositive)
+        if (state.currentChar != '(')
             return false;
 
-        var lst = new List<Exception>();
+        var nextChar = PeekNextNonWhitespaceChar(state);
+        if (nextChar == ',' || nextChar == ';')
+            throw new MathEvaluatorException($"Invalid character '{nextChar}'.");
 
-        var value = Parser.ParseStream(expressionReader, unitOptions, FormattingOptions.Default, lst);
+        state.symbolStack.Push(state.currentChar.ToString());
+        state.nestedGroupDepth++;
 
-        if (lst.Count > 0)
-            warnings.AddRange(lst);
-
-        var expression = new NumberMathExpression(value);
-        expressionQueue.Enqueue(expression);
-
-        this.lastType = ExpressionAtomType.Number;
-
+        state.lastType = TokenType.GroupOpen;
         return true;
     }
 
-    private void ProcessSymbolStack()
+    private bool ParseGroupClose(EvaluatorState state)
     {
-        while (symbolStack.Count > 0)
-        {
-            var p = symbolStack.Pop();
-            if (p.Length == 1 && p == "(")
-                throw new MathEvaluatorException("Unbalanced parentheses.");
+        if (state.currentChar != ')')
+            return false;
 
-            var e = GetExpressionFromSymbol(p);
-            expressionQueue.Enqueue(e);
+        var hasStart = false;
+
+        while (state.symbolStack.Count > 0)
+        {
+            var str = state.symbolStack.Pop();
+            if (str == "(")
+            {
+                hasStart = true;
+
+                if (state.symbolStack.Count == 0)
+                    break;
+
+                var next = state.symbolStack.Peek();
+                if (IsFunction(next))
+                {
+                    str = state.symbolStack.Pop();
+                    state.expressionQueue.Enqueue(GetExpressionFromSymbol(str));
+                    state.nestedFunctionDepth--;
+                }
+
+                state.nestedGroupDepth--;
+                break;
+            }
+
+            state.expressionQueue.Enqueue(GetExpressionFromSymbol(str));
         }
+
+        if (!hasStart)
+            throw new MathEvaluatorException("Unbalanced parentheses.");
+
+        state.lastType = TokenType.GroupClose;
+        return true;
     }
 
-    private MathExpressionBase GetExpressionFromSymbol(string p)
+    private bool ParseComma(EvaluatorState state)
     {
-        MathExpressionBase e;
+        if (state.currentChar != ',' || state.currentChar != ';')
+            return false;
 
-        if (expressionCache.ContainsKey(p))
-            e = expressionCache[p];
-        else if (OperatorMathExpression.IsOperator(p))
-        {
-            e = new OperatorMathExpression(p);
-            expressionCache.Add(p, e);
-        }
-        else if (FunctionMathExpression.IsFunction(p))
-        {
-            e = new FunctionMathExpression(p, false);
-            expressionCache.Add(p, e);
-        }
-        else if (ConvertMathExpression.IsConvertExpression(p))
-        {
-            e = new ConvertMathExpression(p);
-            expressionCache.Add(p, e);
-        }
-        else
-            throw new MathEvaluatorException("Invalid symbol on stack: " + p);
+        if (state.nestedFunctionDepth <= 0 || state.nestedFunctionDepth < state.nestedGroupDepth)
+            throw new MathEvaluatorException($"Invalid character '{state.currentChar}'.");
 
-        return e;
+        var nextChar = PeekNextNonWhitespaceChar(state);
+        if (nextChar == ')' || nextChar == ',' || nextChar == ';')
+            throw new MathEvaluatorException($"Invalid character '{state.currentChar}'.");
+
+        state.lastType = TokenType.Comma;
+        return true;
     }
 
-    private static int Precedence(string c)
+    private bool ParseConversion(EvaluatorState state)
     {
-        if (c.Length == 1 && (c[0] == '*' || c[0] == '/' || c[0] == '%'))
-            return 2;
+        if (state.currentChar != '[')
+            return false;
 
-        return 1;
+        state.buffer.Length = 0;
+        state.buffer.Append(state.currentChar);
+
+        var peekChar = (char) state.expressionReader.Peek();
+        while (IsLetter(peekChar) || IsWhiteSpace(peekChar) || peekChar == '>' || peekChar == ']')
+        {
+            if (!IsWhiteSpace(peekChar))
+                state.buffer.Append((char) state.expressionReader.Read());
+            else
+                state.expressionReader.Read();
+
+            if (peekChar == ']')
+                break;
+
+            peekChar = (char) state.expressionReader.Peek();
+        }
+
+        if (ConvertExpression.IsConvertExpression(state.buffer.ToString()))
+        {
+            state.expressionQueue.Enqueue(GetExpressionFromSymbol(state.buffer.ToString()));
+
+            state.lastType = TokenType.Conversion;
+            return true;
+        }
+
+        throw new MathEvaluatorException($"Invalid conversion expression '{state.buffer}'.");
     }
 
-    private double CalculateFromQueue()
+    #endregion
+
+    #endregion
+
+    #region Evaluator
+
+    private static double EvaluateExpression(EvaluatorState state)
     {
-        calculationStack.Clear();
+        state.evaluationStack.Clear();
 
-        foreach (var expression in expressionQueue)
+        foreach (var expression in state.expressionQueue)
         {
-            if (calculationStack.Count < expression.ArgumentCount)
-                throw new MathEvaluatorException("Invalid number of arguments for expression: " + expression);
+            if (state.evaluationStack.Count < expression.ArgumentCount)
+                throw new MathEvaluatorException($"Invalid number of arguments for expression '{expression}'.");
 
-            parameters.Clear();
+            state.parameters.Clear();
             for (var i = 0; i < expression.ArgumentCount; i++)
-                parameters.Push(calculationStack.Pop());
+                state.parameters.Push(state.evaluationStack.Pop());
 
-            calculationStack.Push(expression.Evaluate(parameters.ToArray()));
+            state.evaluationStack.Push(expression.Evaluate(state.parameters.ToArray()));
         }
 
-        var result = calculationStack.Pop();
+        var result = state.evaluationStack.Pop();
 
-        if (calculationStack.Any())
-            throw new MathEvaluatorException($"Invalid symbol on stack: Items '{String.Join(", ", calculationStack)}' were remaining on calculation stack.");
+        if (state.evaluationStack.Any())
+            throw new MathEvaluatorException($"Invalid evaluation stack: Items '{String.Join(", ", state.evaluationStack)}' remaining.");
 
         return result;
     }
 
-    #region Nested Type: ExpressionAtomType
+    #endregion
 
-    private enum ExpressionAtomType
+    #region Nested Type: TokenType
+
+    private enum TokenType
     {
         Unknown = 0,
         Number,
@@ -445,29 +404,47 @@ public sealed class MathEvaluator : IDisposable
         GroupOpen,
         GroupClose,
         Comma,
-        Convert
+        Conversion
     }
 
     #endregion
 
-    #region IDisposable Members
+    #region Nested Type: EvaluatorState
 
-    public void Dispose()
+    private sealed class EvaluatorState : IDisposable
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    private void Dispose(bool disposing)
-    {
-        if (disposing)
+        public EvaluatorState(string expression, List<Exception>? warnings = null)
         {
-            if (expressionReader != null)
-            {
-                expressionReader.Dispose();
-                expressionReader = null;
-            }
+            expressionReader = new StringReaderLookahead(expression);
+            this.warnings = warnings ?? new List<Exception>();
         }
+
+        public readonly StringReaderLookahead expressionReader;
+        public readonly List<Exception> warnings;
+
+        // Parser
+        public readonly StringBuilder buffer = new StringBuilder();
+        public readonly Queue<ExpressionBase> expressionQueue = new Queue<ExpressionBase>();
+        public readonly Stack<string> symbolStack = new Stack<string>();
+    
+        // Parser (mutable) state
+        public char currentChar;
+        public TokenType lastType;
+        public uint nestedFunctionDepth;
+        public uint nestedGroupDepth;
+
+        // Evaluation
+        public readonly Stack<double> evaluationStack = new Stack<double>();
+        public readonly Stack<double> parameters = new Stack<double>(2);
+
+        #region Implementation of IDisposable
+
+        public void Dispose()
+        {
+            expressionReader.Dispose();
+        }
+
+        #endregion
     }
 
     #endregion

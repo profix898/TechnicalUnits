@@ -113,6 +113,9 @@ internal static class SIPrefixes
     {
         exp = 0;
 
+        if (String.IsNullOrEmpty(str))
+            return false;
+
         if (PrefixesSI.Contains(str, out var index))
             exp = Exponents[index];
         else if (PrefixesSINames.Contains(str, out index))
@@ -123,9 +126,12 @@ internal static class SIPrefixes
         return exp != 0;
     }
 
-    public static bool IsValidSIChar(char c) // Checks whether c is contained in _any_ si prefix
+    public static bool IsValidSIChar(char ch) // Checks whether c is contained in _any_ si prefix
     {
-        var str = c.ToString();
+        var str = ch.ToString();
+
+        if (String.IsNullOrEmpty(str))
+            return false;
 
         if (PrefixesSI.Contains(str))
             return true;
@@ -135,11 +141,6 @@ internal static class SIPrefixes
             return true;
 
         return false;
-    }
-
-    public static bool IsValidExpChar(char c)
-    {
-        return c == 'e';
     }
 
     public static string GetSIPrefix(int exp, UnitOptions unitOptions, FormattingOptions formattingOptions, out bool unitPlaced)
@@ -183,12 +184,12 @@ internal static class SIPrefixes
 
     public static bool ContainsSIPrefix(string str, out string prefix)
     {
+        var containsPrefix = false;
         prefix = "";
 
         if (IsSIPrefix(str, out _))
             return true;
 
-        var containsPrefix = false;
         for (var k = 0; k < str.Length; k++)
         {
             if (IsExpPrefix(str.Substring(k, 1)) || IsSIPrefix(str.Substring(k, 1), out _))

@@ -2,7 +2,7 @@ using System;
 
 namespace TechnicalUnits.Math.Expressions;
 
-public abstract class MathExpressionBase
+public abstract class ExpressionBase
 {
     public abstract int ArgumentCount { get; }
 

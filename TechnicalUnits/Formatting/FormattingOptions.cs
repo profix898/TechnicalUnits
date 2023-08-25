@@ -15,11 +15,11 @@ public sealed class FormattingOptions
 
     [Category("Number Format")]
     [Description("Characters used as decimal separator")]
-    public string DecimalSeparator { get; set; } = NumberFormatInfo.CurrentInfo.NumberDecimalSeparator;
+    public string DecimalSeparator { get; set; } = NumberFormatInfo.InvariantInfo.NumberDecimalSeparator;
 
     [Category("Number Format")]
     [Description("Characters used as group separator")]
-    public string GroupSeparator { get; set; } = NumberFormatInfo.CurrentInfo.NumberGroupSeparator;
+    public string GroupSeparator { get; set; } = NumberFormatInfo.InvariantInfo.NumberGroupSeparator;
 
     [Category("Number Format")]
     [Description("Characters used as plus sign")]
