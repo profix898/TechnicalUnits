@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Demo/">
+    <Project Path="Demo/DemoAvalonia/DemoAvalonia.csproj" />
+    <Project Path="Demo/DemoConsole/DemoConsole.csproj" />
+    <Project Path="Demo/DemoWinForms/DemoWinForms.csproj" />
+  </Folder>
+  <Project Path="TechnicalUnits.Avalonia/TechnicalUnits.Avalonia.csproj" />
+  <Project Path="TechnicalUnits.WinForms/TechnicalUnits.WinForms.csproj" />
+  <Project Path="TechnicalUnits/TechnicalUnits.csproj" />
+  <Properties Name="ExtensibilityGlobals" Scope="PostLoad">
+    <Property Name="FileExplorer" />
+  </Properties>
+</Solution>

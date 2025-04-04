@@ -1,5 +1,6 @@
-﻿using TechnicalUnits.Units;
-using static TechnicalUnits.Units.SIUnits;
+﻿using static TechnicalUnits.Units.SIUnits;
+
+namespace TechnicalUnits.Units;
 
 public static class ElectricalUnits
 {

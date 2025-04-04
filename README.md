@@ -6,3 +6,6 @@ TechnicalUnits provides SI units and engineering notation support (formatting + 
 
 ### Disclaimer
 TechnicalUnits is in an early stage of development and should be considered experimental.
+
+### License
+TechnicalUnits is licensed under the terms of the MIT license (<http://opensource.org/licenses/MIT>, see LICENSE.txt).

@@ -22,6 +22,7 @@ internal class StringReaderLookahead : StringReader
     {
         if (peekList.Count == 0)
             return base.ReadBlock(buffer, index, count);
+
         return Read(buffer, index, count);
     }
 
@@ -48,7 +49,8 @@ internal class StringReaderLookahead : StringReader
         if (index == peekList.Count)
             return base.Peek();
 
-        // Index lies beyond the current list + base.Peek() -> read from base until base.Peek() is the requested index
+        // Index lies beyond the current list + base.Peek()
+        // -> read from base until base.Peek() is the requested index
         while (peekList.Count < index)
             peekList.Add(base.Read());
 

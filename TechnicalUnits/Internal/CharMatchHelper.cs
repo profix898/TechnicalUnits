@@ -12,18 +12,17 @@ internal static class CharMatchHelper
 
     public static bool IsSign(char ch)
     {
-        return ch == '+' || ch == '-';
+        return ch is '+' or '-';
     }
 
     public static bool IsNegativeSign(char ch)
     {
-        // Note: Might seem trivial but can be extended to support unicode etc.
-        return ch == '-';
+        return ch is '-'; // Note: Might seem trivial but can be extended to support unicode etc.
     }
 
     public static bool IsNumeric(char ch)
     {
-        return ch >= '0' && ch <= '9' || IsDigit(ch);
+        return ch is >= '0' and <= '9' || IsDigit(ch);
     }
 
     public static bool IsDecSep(string str, FormattingOptions formattingOptions)
@@ -33,15 +32,12 @@ internal static class CharMatchHelper
 
     public static bool IsBlank(char ch)
     {
-        return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
+        return ch is ' ' or '\t' or '\r' or '\n';
     }
 
     public static bool IsInvalidChar(char ch)
     {
-        if (ch == '(' || ch == ')')
-            return true;
-
-        return false;
+        return ch is '(' or ')';
     }
 
     public static bool IsOperator(char ch)
@@ -77,21 +73,18 @@ internal static class CharMatchHelper
             return unitSymbolLength;
         }
 
-        if (unitOptions.AlternateUnits.Count > 0)
+        if (unitOptions.AlternateUnits.Count <= 0)
+            return unitSymbolLength;
+
+        foreach (var altUnit in unitOptions.AlternateUnits.Where(altUnit => StrEndsWithPattern(str, altUnit.Symbol)))
         {
-            foreach (var altUnit in unitOptions.AlternateUnits)
-            {
-                if (!StrEndsWithPattern(str, altUnit.Symbol))
-                    continue;
+            unitSymbolLength = altUnit.Symbol.Length;
+            if (altUnit.BaseUnit == unitOptions.Unit)
+                unitConvFactor = altUnit.BaseConversionFactor;
+            else
+                throw new AmbiguousUnitException("No conversion factor to base unit available.", altUnit);
 
-                unitSymbolLength = altUnit.Symbol.Length;
-                if (altUnit.BaseUnit == unitOptions.Unit)
-                    unitConvFactor = altUnit.BaseConversionFactor;
-                else
-                    throw new AmbiguousUnitException("No conversion factor to base unit available.", altUnit);
-
-                return unitSymbolLength;
-            }
+            return unitSymbolLength;
         }
 
         return unitSymbolLength;
@@ -115,10 +108,7 @@ internal static class CharMatchHelper
     public static string SubstringTolerant(string str, int start, int length)
     {
         if (start < 0)
-        {
             start = 0;
-            length += start;
-        }
 
         if (start + length > str.Length)
             length = str.Length - start;
@@ -127,7 +117,6 @@ internal static class CharMatchHelper
             return str.Substring(start, length);
 
         return String.Empty;
-
     }
 
     #endregion

@@ -123,10 +123,10 @@ internal static class SIPrefixes
         else if (PrefixesSIAz.Contains(str, out index))
             exp = Exponents[index];
 
-        return exp != 0;
+        return (exp != 0);
     }
 
-    public static bool IsValidSIChar(char ch) // Checks whether c is contained in _any_ si prefix
+    public static bool IsValidSIChar(char ch) // Checks whether c is contained in _any_ SI prefix
     {
         var str = ch.ToString();
 
@@ -149,20 +149,19 @@ internal static class SIPrefixes
 
         if (exp == 0)
         {
-            if (formattingOptions.PrefixOrUnitAsDecimalSeparator)
+            if (!formattingOptions.PrefixOrUnitAsDecimalSeparator)
+                return String.Empty;
+
+            if (unitOptions.Unit.Symbol.Length > 0
+                && unitOptions.Unit.Symbol != "1") // Ignore 'dimensionless' unit
             {
-                if (unitOptions.Unit.Symbol.Length > 0
-                    && unitOptions.Unit.Symbol != "1") // Ignore 'dimensionless' unit
-                {
-                    unitPlaced = true;
+                unitPlaced = true;
 
-                    return unitOptions.Unit.Symbol;
-                }
-
-                return formattingOptions.DecimalSeparator;
+                return unitOptions.Unit.Symbol;
             }
 
-            return String.Empty;
+            return formattingOptions.DecimalSeparator;
+
         }
 
         if (!Exponents.Contains(exp, out var index))
@@ -179,7 +178,7 @@ internal static class SIPrefixes
 
     public static bool IsExpPrefix(string str)
     {
-        return str == "e" || str == "E";
+        return str is "e" or "E";
     }
 
     public static bool ContainsSIPrefix(string str, out string prefix)
