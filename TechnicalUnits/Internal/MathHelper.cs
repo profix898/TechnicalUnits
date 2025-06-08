@@ -3,7 +3,7 @@ using static System.Math;
 
 namespace TechnicalUnits.Internal;
 
-internal static class MathUtility
+internal static class MathHelper
 {
     public static double GetDecimals(double x)
     {
@@ -22,17 +22,15 @@ internal static class MathUtility
 
     public static bool NearlyEqual(double a, double b, double epsilon)
     {
-        var absA = Abs(a);
-        var absB = Abs(b);
         var diff = Abs(a - b);
 
-        if (Abs(a - b) < Double.Epsilon)
+        if (diff < Double.Epsilon)
             return true;
 
         if (a == 0 || b == 0 || diff < Double.MinValue)
             return diff < epsilon * Double.MinValue;
 
         // Use relative error
-        return diff / (absA + absB) < epsilon;
+        return diff / (Abs(a) + Abs(b)) < epsilon;
     }
 }

@@ -9,7 +9,7 @@ namespace TechnicalUnits.Internal;
 
 internal class StringReaderLookahead : StringReader
 {
-    private readonly List<int> peekList = new List<int>();
+    private readonly List<int> _peekList = new List<int>();
 
     public StringReaderLookahead(string str)
         : base(str)
@@ -20,7 +20,7 @@ internal class StringReaderLookahead : StringReader
 
     public override int ReadBlock(char[] buffer, int index, int count)
     {
-        if (peekList.Count == 0)
+        if (_peekList.Count == 0)
             return base.ReadBlock(buffer, index, count);
 
         return Read(buffer, index, count);
@@ -32,10 +32,10 @@ internal class StringReaderLookahead : StringReader
 
     public override int Peek()
     {
-        if (peekList.Count < 1)
+        if (_peekList.Count < 1)
             return base.Peek();
 
-        return peekList.First();
+        return _peekList.First();
     }
 
     public int Peek(int index)
@@ -44,15 +44,15 @@ internal class StringReaderLookahead : StringReader
             throw new ArgumentOutOfRangeException(nameof(index), "Negative indices are not supported.");
         if (index == 0)
             return Peek();
-        if (index < peekList.Count)
-            return peekList[index];
-        if (index == peekList.Count)
+        if (index < _peekList.Count)
+            return _peekList[index];
+        if (index == _peekList.Count)
             return base.Peek();
 
         // Index lies beyond the current list + base.Peek()
         // -> read from base until base.Peek() is the requested index
-        while (peekList.Count < index)
-            peekList.Add(base.Read());
+        while (_peekList.Count < index)
+            _peekList.Add(base.Read());
 
         return base.Peek();
     }
@@ -78,11 +78,11 @@ internal class StringReaderLookahead : StringReader
 
     public override int Read()
     {
-        if (peekList.Count < 1)
+        if (_peekList.Count < 1)
             return base.Read();
 
-        var cnt = peekList.First();
-        peekList.RemoveAt(0);
+        var cnt = _peekList.First();
+        _peekList.RemoveAt(0);
 
         return cnt;
     }
@@ -107,7 +107,7 @@ internal class StringReaderLookahead : StringReader
 
     public override string ReadToEnd()
     {
-        return String.Join(String.Empty, peekList) + base.ReadToEnd();
+        return String.Join(String.Empty, _peekList) + base.ReadToEnd();
     }
 
     public override string ReadLine()
@@ -127,7 +127,7 @@ internal class StringReaderLookahead : StringReader
 
     public override Task<string> ReadLineAsync()
     {
-        if (peekList.Count == 0)
+        if (_peekList.Count == 0)
             return base.ReadLineAsync();
 
         return Task.FromResult(ReadLine());
@@ -135,7 +135,7 @@ internal class StringReaderLookahead : StringReader
 
     public override Task<string> ReadToEndAsync()
     {
-        if (peekList.Count == 0)
+        if (_peekList.Count == 0)
             return base.ReadToEndAsync();
 
         return Task.FromResult(ReadToEnd());
@@ -143,7 +143,7 @@ internal class StringReaderLookahead : StringReader
 
     public override Task<int> ReadBlockAsync(char[] buffer, int index, int count)
     {
-        if (peekList.Count == 0)
+        if (_peekList.Count == 0)
             return base.ReadBlockAsync(buffer, index, count);
 
         return Task.FromResult(ReadBlock(buffer, index, count));
@@ -151,7 +151,7 @@ internal class StringReaderLookahead : StringReader
 
     public override Task<int> ReadAsync(char[] buffer, int index, int count)
     {
-        if (peekList.Count == 0)
+        if (_peekList.Count == 0)
             return base.ReadAsync(buffer, index, count);
 
         return Task.FromResult(Read());

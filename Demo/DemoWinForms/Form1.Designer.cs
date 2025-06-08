@@ -1,4 +1,6 @@
-﻿namespace DemoWinForms
+﻿using TechnicalUnits.WinForms;
+
+namespace DemoWinForms
 {
     partial class Form1
     {
@@ -28,12 +30,30 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "Form1";
+            technicalUnits1 = new TechnicalUnitsUpDown();
+            SuspendLayout();
+            // 
+            // technicalUnits1
+            // 
+            technicalUnits1.Location = new System.Drawing.Point(12, 12);
+            technicalUnits1.Name = "technicalUnits1";
+            technicalUnits1.Size = new System.Drawing.Size(250, 27);
+            technicalUnits1.TabIndex = 0;
+            // 
+            // Form1
+            // 
+            AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            ClientSize = new System.Drawing.Size(582, 303);
+            Controls.Add(technicalUnits1);
+            Name = "Form1";
+            Text = "Technical Units Demo";
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
+
+        private TechnicalUnitsUpDown technicalUnits1;
     }
 }

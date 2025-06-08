@@ -2,13 +2,13 @@
 using System.Globalization;
 using TechnicalUnits.Units;
 using static System.Math;
-using static TechnicalUnits.Internal.MathUtility;
+using static TechnicalUnits.Internal.MathHelper;
 
 namespace TechnicalUnits.Extensions;
 
 public static class UnitUtility
 {
-    private static readonly string[] siPrefixes = { "y", "z", "a", "f", "p", "n", "µ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y" };
+    private static readonly string[] _siPrefixes = { "y", "z", "a", "f", "p", "n", "µ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y" };
 
     /// <summary>Formats value in SI unit format (e.g. '10.0 mT')</summary>
     /// <param name="unit">SI unit to use for formatting.</param>
@@ -41,13 +41,13 @@ public static class UnitUtility
         var divisor = Pow(10.0, prefixGroup * 3);
 
         prefixGroup += 8; // Offset in 'prefixes' list
-        if (prefixGroup < 0 || prefixGroup >= siPrefixes.Length)
+        if (prefixGroup < 0 || prefixGroup >= _siPrefixes.Length)
             return String.Format(cultureInfo, "{0} {1}", value, unit);
 
         if (shortenTrailingZeros)
             precision = GetPrecision(valueAbs, divisor, precision);
 
-        return String.Format(cultureInfo, "{0} {1}{2}", (value / divisor).ToString($"F{precision}", cultureInfo), siPrefixes[prefixGroup], unit);
+        return String.Format(cultureInfo, "{0} {1}{2}", (value / divisor).ToString($"F{precision}", cultureInfo), _siPrefixes[prefixGroup], unit);
     }
 
     #region Private

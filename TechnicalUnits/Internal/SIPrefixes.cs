@@ -160,7 +160,7 @@ internal static class SIPrefixes
                 return unitOptions.Unit.Symbol;
             }
 
-            return formattingOptions.DecimalSeparator;
+            return formattingOptions.NumberFormat.NumberDecimalSeparator;
 
         }
 

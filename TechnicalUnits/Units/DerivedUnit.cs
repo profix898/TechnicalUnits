@@ -4,8 +4,8 @@ namespace TechnicalUnits.Units;
 
 public class DerivedUnit : Unit
 {
-    private readonly Func<double, double>? fromBaseUnitFunc;
-    private readonly Func<double, double>? toBaseUnitFunc;
+    private readonly Func<double, double>? _fromBaseUnitFunc;
+    private readonly Func<double, double>? _toBaseUnitFunc;
 
     public DerivedUnit(string name, string symbol, double baseConvFactor, Unit baseUnit)
         : base(name, symbol, baseUnit.Dimensions)
@@ -35,8 +35,8 @@ public class DerivedUnit : Unit
         if (baseUnit == null)
             throw new ArgumentNullException(nameof(baseUnit));
 
-        this.fromBaseUnitFunc = fromBaseUnitFunc;
-        this.toBaseUnitFunc = toBaseUnitFunc;
+        _fromBaseUnitFunc = fromBaseUnitFunc;
+        _toBaseUnitFunc = toBaseUnitFunc;
         BaseUnit = baseUnit;
     }
 
@@ -48,16 +48,16 @@ public class DerivedUnit : Unit
 
     public double FromBase(double value)
     {
-        if (fromBaseUnitFunc != null)
-            return fromBaseUnitFunc(value);
+        if (_fromBaseUnitFunc != null)
+            return _fromBaseUnitFunc(value);
 
         return value * BaseConversionFactor;
     }
 
     public double ToBase(double value)
     {
-        if (toBaseUnitFunc != null)
-            return toBaseUnitFunc(value);
+        if (_toBaseUnitFunc != null)
+            return _toBaseUnitFunc(value);
 
         return value / BaseConversionFactor;
     }

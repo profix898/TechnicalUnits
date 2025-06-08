@@ -13,8 +13,8 @@ public static class UnitUtilityExtended
         if (precision != formattingOptions.FractionalPrecision || cultureInfo != null)
         {
             formattingOptions.FractionalPrecision = precision;
-            formattingOptions.DecimalSeparator = cultureInfo?.NumberFormat.NumberDecimalSeparator ?? formattingOptions.DecimalSeparator;
-            formattingOptions.GroupSeparator = cultureInfo?.NumberFormat.NumberGroupSeparator ?? formattingOptions.GroupSeparator;
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo?.NumberFormat.NumberDecimalSeparator ?? formattingOptions.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo?.NumberFormat.NumberGroupSeparator ?? formattingOptions.NumberFormat.NumberGroupSeparator;
         }
 
         return Formatter.Format(value, unit, formattingOptions);
@@ -25,8 +25,8 @@ public static class UnitUtilityExtended
         var formattingOptions = FormattingOptions.Default;
         if (cultureInfo != null)
         {
-            formattingOptions.DecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
-            formattingOptions.GroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
         }
 
         return Parser.ParseString(strValue, unit, formattingOptions);
@@ -37,8 +37,8 @@ public static class UnitUtilityExtended
         var formattingOptions = FormattingOptions.Default;
         if (cultureInfo != null)
         {
-            formattingOptions.DecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
-            formattingOptions.GroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
         }
 
         var unitOptions = new UnitOptions(unit, alternateUnits);

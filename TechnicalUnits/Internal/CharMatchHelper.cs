@@ -27,7 +27,7 @@ internal static class CharMatchHelper
 
     public static bool IsDecSep(string str, FormattingOptions formattingOptions)
     {
-        return str == "." || str == "," || str == formattingOptions.DecimalSeparator;
+        return str == "." || str == "," || str == formattingOptions.NumberFormat.NumberDecimalSeparator;
     }
 
     public static bool IsBlank(char ch)

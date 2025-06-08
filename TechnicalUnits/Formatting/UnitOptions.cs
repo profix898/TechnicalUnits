@@ -9,35 +9,37 @@ namespace TechnicalUnits.Formatting;
 [TypeConverter(typeof(ExpandableObjectConverter))]
 public sealed class UnitOptions
 {
-    private Unit unit = null!;
+    private Unit _unit;
 
     public UnitOptions()
     {
-        Unit = SIUnits.Dimensionless;
+        _unit = SIUnits.Dimensionless;
+        AlternateUnits = new List<DerivedUnit>();
     }
 
     public UnitOptions(Unit unit)
     {
-        Unit = unit;
+        _unit = unit;
+        AlternateUnits = new List<DerivedUnit>();
     }
 
     public UnitOptions(Unit unit, IEnumerable<DerivedUnit> alternateUnits)
     {
-        Unit = unit;
+        _unit = unit;
         AlternateUnits = new List<DerivedUnit>(alternateUnits);
     }
 
     [Category("Units")]
-    [Description("Unit for the given value")]
+    [Description("(Base) Unit")]
     public Unit Unit
     {
-        get { return unit; }
-        set { unit = value ?? throw new ArgumentNullException(nameof(value)); }
+        get { return _unit; }
+        set { _unit = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
     [Category("Units")]
-    [Description("Collection of alternate units for the given value (must derive from base unit)")]
-    public List<DerivedUnit> AlternateUnits { get; } = new List<DerivedUnit>();
+    [Description("Collection of alternate units (must derive from base unit)")]
+    public List<DerivedUnit> AlternateUnits { get; }
 
     /// <summary>Sort unit symbols starting with the longest, so that short units do not "eat" the longer ones.</summary>
     internal DerivedUnit[] GetSortedUnits()

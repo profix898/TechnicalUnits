@@ -18,7 +18,7 @@ public sealed class OperatorExpression : ExpressionBase
 
     #endregion
 
-    public static readonly char[] OperatorSymbols = { '+', '-', '*', '/', '^' };
+    public static readonly char[] OperatorSymbols = ['+', '-', '*', '/', '^'];
 
     public OperatorExpression(string operation)
     {

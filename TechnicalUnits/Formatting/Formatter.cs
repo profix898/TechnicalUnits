@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using TechnicalUnits.Internal;
 using static System.Math;
-using static TechnicalUnits.Internal.MathUtility;
+using static TechnicalUnits.Internal.MathHelper;
 
 namespace TechnicalUnits.Formatting;
 
@@ -33,8 +33,8 @@ public static class Formatter
         {
             var formatInfo = new NumberFormatInfo
             {
-                NumberDecimalSeparator = formattingOptions.DecimalSeparator,
-                NumberGroupSeparator = formattingOptions.GroupSeparator
+                NumberDecimalSeparator = formattingOptions.NumberFormat.NumberDecimalSeparator,
+                NumberGroupSeparator = formattingOptions.NumberFormat.NumberGroupSeparator
             };
 
             var resultString = new StringBuilder((sign * value).ToString($"g{formattingOptions.SignificantDigits + 1:D}", formatInfo));
@@ -124,7 +124,7 @@ public static class Formatter
             }
         }
         else
-            decSepStr = formattingOptions.DecimalSeparator;
+            decSepStr = formattingOptions.NumberFormat.NumberDecimalSeparator;
 
         if (!isPostDecEmpty || formattingOptions.ForceDecimalSeparator || formattingOptions.PrefixOrUnitAsDecimalSeparator)
         {

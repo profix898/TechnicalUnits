@@ -4,7 +4,7 @@ namespace TechnicalUnits.Units;
 
 public static class SIUnits
 {
-    public static readonly Unit Dimensionless = new Unit("", "1", Dimension.Dimensionless);
+    public static readonly Unit Dimensionless = new Unit("", "", Dimension.Dimensionless);
 
     // SI Base Units
     public static readonly Unit Second = new Unit("time", Dimension.Second);

@@ -11,28 +11,50 @@ namespace TechnicalUnits.Math;
 
 public sealed class MathEvaluator
 {
-    private readonly UnitOptions unitOptions = new UnitOptions();
+    private readonly UnitOptions _unitOptions = new UnitOptions();
 
-    private readonly List<string> functionList;
-    private readonly Dictionary<string, ExpressionBase> expressionCache;
+    private readonly List<string> _functionList;
+    private readonly Dictionary<string, ExpressionBase> _expressionCache;
 
     public MathEvaluator()
     {
-        functionList = new List<string>(FunctionExpression.GetFunctionNames());
-        functionList.Sort();
+        _functionList = new List<string>(FunctionExpression.GetFunctionNames());
+        _functionList.Sort();
 
-        expressionCache = new Dictionary<string, ExpressionBase>(StringComparer.OrdinalIgnoreCase);
+        _expressionCache = new Dictionary<string, ExpressionBase>(StringComparer.OrdinalIgnoreCase);
     }
 
     public Dictionary<string, double> Constants { get; } = new Dictionary<string, double>()
     {
+        // Math constants
         { "pi", System.Math.PI },
-        { "e", System.Math.E }
+        { "e", System.Math.E },
+        { "sqrt2", System.Math.Sqrt(2) },
+
+        // Physical constants
+        { "c", 299792458 }, // Speed of light in m/s
+        { "g", 9.80665 },   // Standard gravity in m/s²
+        { "h", 6.62607015e-34 }, // Planck's constant in J·s
+        { "hbar", 1.054571817e-34 }, // Reduced Planck's constant in J·s
+        { "kB", 1.380649e-23 }, // Boltzmann constant in J/K
+        { "NA", 6.02214076e23 }, // Avogadro's number
+        { "Gc", 6.67430e-11 }, // Gravitational constant
+        { "qe", 1.602176634e-19 }, // Elementary charge in C
+        { "me", 9.1093837015e-31 }, // Electron mass in kg
+        { "mp", 1.67262192369e-27 }, // Proton mass in kg
+        { "mn", 1.67492749804e-27 }, // Neutron mass in kg
+        { "mu0", 1.25663706212e-6 }, // Vacuum permeability
+        { "eps0", 8.8541878128e-12 }, // Vacuum permittivity in F/m
+        { "R", 8.314462618 }, // Gas constant in J/(mol·K)
+        { "Ry", 2.1798723611035e-18 }, // Rydberg constant in J
+        { "F", 96485.33212 }, // Faraday constant in C/mol
+        { "Vm", 22.413962 }, // Molar volume of ideal gas at STP in L/mol
+        { "atm", 101325 }, // Standard atmosphere
     };
 
     #region Functions
 
-    public IReadOnlyList<string> Functions => functionList;
+    public IReadOnlyList<string> Functions => _functionList;
 
     public void RegisterFunction(string functionName, ExpressionBase expression)
     {
@@ -41,17 +63,17 @@ public sealed class MathEvaluator
         if (expression == null)
             throw new ArgumentNullException(nameof(expression));
 
-        if (functionList.BinarySearch(functionName) >= 0)
+        if (_functionList.BinarySearch(functionName) >= 0)
             throw new ArgumentException($"The function name '{functionName}' is already registered.", nameof(functionName));
 
-        functionList.Add(functionName);
-        functionList.Sort();
-        expressionCache.Add(functionName, expression);
+        _functionList.Add(functionName);
+        _functionList.Sort();
+        _expressionCache.Add(functionName, expression);
     }
 
     private bool IsFunction(string name)
     {
-        return functionList.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
+        return _functionList.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
     }
 
     #endregion
@@ -141,22 +163,22 @@ public sealed class MathEvaluator
     private ExpressionBase GetExpressionFromSymbol(string symbol)
     {
         ExpressionBase expression;
-        if (expressionCache.TryGetValue(symbol, out var value))
+        if (_expressionCache.TryGetValue(symbol, out var value))
             expression = value;
         else if (OperatorExpression.IsOperator(symbol))
         {
             expression = new OperatorExpression(symbol);
-            expressionCache.Add(symbol, expression);
+            _expressionCache.Add(symbol, expression);
         }
         else if (FunctionExpression.IsFunction(symbol))
         {
             expression = new FunctionExpression(symbol, false);
-            expressionCache.Add(symbol, expression);
+            _expressionCache.Add(symbol, expression);
         }
         else if (ConvertExpression.IsConvertExpression(symbol))
         {
             expression = new ConvertExpression(symbol);
-            expressionCache.Add(symbol, expression);
+            _expressionCache.Add(symbol, expression);
         }
         else
             throw new MathEvaluatorException($"Invalid symbol '{symbol}' on stack.");
@@ -215,7 +237,7 @@ public sealed class MathEvaluator
             return false;
 
         // Parse number (without unit, but supporting SI prefix notation)
-        var value = Parser.ParseStream(state.expressionReader, unitOptions, FormattingOptions.Default, state.warnings);
+        var value = Parser.ParseStream(state.expressionReader, _unitOptions, FormattingOptions.Default, state.warnings);
 
         var expression = new NumberExpression(value);
         state.expressionQueue.Enqueue(expression);

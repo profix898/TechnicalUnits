@@ -24,17 +24,17 @@ public sealed class NumberExpression : ExpressionBase
 
     public static bool IsNumber(char ch)
     {
-        return Char.IsDigit(ch) || Default.DecimalSeparator.IndexOf(ch) >= 0;
+        return Char.IsDigit(ch) || Default.NumberFormat.NumberDecimalSeparator.IndexOf(ch) >= 0;
     }
 
     public static bool IsPositiveSign(char ch)
     {
-        return Default.PositiveSign.IndexOf(ch) >= 0;
+        return Default.NumberFormat.PositiveSign.IndexOf(ch) >= 0;
     }
 
     public static bool IsNegativeSign(char ch)
     {
-        return Default.NegativeSign.IndexOf(ch) >= 0;
+        return Default.NumberFormat.NegativeSign.IndexOf(ch) >= 0;
     }
 
     #endregion
