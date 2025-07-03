@@ -182,6 +182,8 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
         // Set the value and update the text representation
         Value = value;
 
+        Invalidate();
+
         // Show any validation errors in tooltip
         if (errors != null && errors.Count > 0)
         {
