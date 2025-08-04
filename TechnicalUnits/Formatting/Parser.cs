@@ -363,10 +363,9 @@ public static class Parser
 
     #region ParseStream
 
-    internal static double ParseStream(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions? formattingOptions = null,
-                                       List<Exception>? warnings = null)
+    internal static double ParseStream(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings = null)
     {
-        var state = ParseStreamInternal(stringReader, unitOptions, formattingOptions ?? FormattingOptions.Default);
+        var state = ParseStreamInternal(stringReader, unitOptions, formattingOptions);
 
         double value;
         if (state.postDecVal != 0)
@@ -392,11 +391,7 @@ public static class Parser
         {
             char ch;
             if (stringReader.Peek() > -1)
-            {
                 ch = (char) stringReader.Peek();
-                if (IsBlank(ch))
-                    lastIteration = true; // Spaces are delimiters in streams
-            }
             else
             {
                 ch = ' ';
@@ -404,7 +399,7 @@ public static class Parser
             }
 
             if (oldState == state.currentPart && !advancedStream)
-                throw new Exception("Internal Error: Neither state nor i have changed during a loop run.");
+                throw new Exception("Internal Error: Neither state nor iteration have changed during a loop run.");
 
             advancedStream = false; // Assume no progress was requested
             oldState = state.currentPart;
@@ -520,7 +515,7 @@ public static class Parser
                     str = state.chrStr.ToString();
                     if (SIPrefixes.IsExpPrefix(str) &&
                         (IsNumeric((char) stringReader.Peek(1)) ||
-                         IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
+                         (IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2)))))
                     {
                         // Valid format of exponential notation found
                         state.chrStr.Clear(); // Reset the appending

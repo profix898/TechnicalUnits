@@ -1,5 +1,4 @@
-﻿using System;
-using TechnicalUnits.Formatting;
+﻿using TechnicalUnits.Formatting;
 
 namespace TechnicalUnits;
 

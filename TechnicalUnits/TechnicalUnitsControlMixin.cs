@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using TechnicalUnits.Internal;
 
 namespace TechnicalUnits;

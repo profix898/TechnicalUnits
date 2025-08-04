@@ -51,7 +51,7 @@ public static class TechnicalUnitsControlExtensions
             if (control.EnableMath)
             {
                 _mathEval ??= new MathEvaluator();
-                result = _mathEval.Evaluate(text, errors);
+                result = _mathEval.Evaluate(text, control.UnitOptions, control.FormattingOptions, errors);
             }
             else
             {

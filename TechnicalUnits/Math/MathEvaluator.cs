@@ -11,8 +11,6 @@ namespace TechnicalUnits.Math;
 
 public sealed class MathEvaluator
 {
-    private readonly UnitOptions _unitOptions = new UnitOptions();
-
     private readonly List<string> _functionList;
     private readonly Dictionary<string, ExpressionBase> _expressionCache;
 
@@ -64,7 +62,7 @@ public sealed class MathEvaluator
             throw new ArgumentNullException(nameof(expression));
 
         if (_functionList.BinarySearch(functionName) >= 0)
-            throw new ArgumentException($"The function name '{functionName}' is already registered.", nameof(functionName));
+            throw new ArgumentException($"Function name '{functionName}' is already registered.", nameof(functionName));
 
         _functionList.Add(functionName);
         _functionList.Sort();
@@ -78,12 +76,12 @@ public sealed class MathEvaluator
 
     #endregion
 
-    public double Evaluate(string expression, List<Exception>? warnings = null)
+    public double Evaluate(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings)
     {
         if (String.IsNullOrEmpty(expression))
             throw new ArgumentNullException(nameof(expression));
 
-        using var state = new EvaluatorState(expression, warnings);
+        using var state = new EvaluatorState(expression, unitOptions, formattingOptions, warnings);
 
         ParseExpression(state);
 
@@ -237,7 +235,7 @@ public sealed class MathEvaluator
             return false;
 
         // Parse number (without unit, but supporting SI prefix notation)
-        var value = Parser.ParseStream(state.expressionReader, _unitOptions, FormattingOptions.Default, state.warnings);
+        var value = Parser.ParseStream(state.expressionReader, state.unitOptions, state.formattingOptions, state.warnings);
 
         var expression = new NumberExpression(value);
         state.expressionQueue.Enqueue(expression);
@@ -435,14 +433,21 @@ public sealed class MathEvaluator
 
     private sealed class EvaluatorState : IDisposable
     {
-        public EvaluatorState(string expression, List<Exception>? warnings = null)
+        public EvaluatorState(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings = null)
         {
             expressionReader = new StringReaderLookahead(expression);
             this.warnings = warnings ?? new List<Exception>();
+
+            this.unitOptions = unitOptions;
+            this.formattingOptions = formattingOptions;
         }
 
         public readonly StringReaderLookahead expressionReader;
         public readonly List<Exception> warnings;
+
+        // Options
+        public readonly UnitOptions unitOptions;
+        public readonly FormattingOptions formattingOptions;
 
         // Parser
         public readonly StringBuilder buffer = new StringBuilder();
