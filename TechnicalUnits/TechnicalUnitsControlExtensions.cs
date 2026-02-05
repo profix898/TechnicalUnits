@@ -5,9 +5,12 @@ using TechnicalUnits.Math;
 
 namespace TechnicalUnits;
 
+/// <summary>
+/// Provides extension methods for <see cref="ITechnicalUnitsControl"/> for value/text conversion and validation.
+/// </summary>
 public static class TechnicalUnitsControlExtensions
 {
-    private static MathEvaluator? _mathEval;
+    private static readonly Lazy<MathEvaluator> _mathEval = new Lazy<MathEvaluator>(() => new MathEvaluator());
 
     /// <summary>Converts a value to its formatted text representation.</summary>
     public static string ConvertValueToText(this ITechnicalUnitsControl control, object value)
@@ -27,7 +30,7 @@ public static class TechnicalUnitsControlExtensions
     /// <summary>Converts a text representation to its corresponding value.</summary>
     /// <remarks>On failure to convert text to value, the function does not throw exceptions, 
     /// but returns a list of errors and potentially a null value. The caller is responsible 
-    /// for deciding on an approproriate action or UI response.</remarks>
+    /// for deciding on an appropriate action or UI response.</remarks>
     public static double? ConvertTextToValue(this ITechnicalUnitsControl control, object value, List<Exception>? errors = null)
     {
         if (value is not string text)
@@ -39,7 +42,7 @@ public static class TechnicalUnitsControlExtensions
     /// <summary>Converts a text representation to its corresponding value.</summary>
     /// <remarks>On failure to convert text to value, the function does not throw exceptions, 
     /// but returns a list of errors and potentially a null value. The caller is responsible 
-    /// for deciding on an approproriate action or UI response.</remarks>
+    /// for deciding on an appropriate action or UI response.</remarks>
     public static double? ConvertTextToValue(this ITechnicalUnitsControl control, string? text, List<Exception>? errors = null)
     {
         if (String.IsNullOrEmpty(text))
@@ -50,8 +53,7 @@ public static class TechnicalUnitsControlExtensions
             double result;
             if (control.EnableMath)
             {
-                _mathEval ??= new MathEvaluator();
-                result = _mathEval.Evaluate(text, control.UnitOptions, control.FormattingOptions, errors);
+                result = _mathEval.Value.Evaluate(text, control.UnitOptions, control.FormattingOptions, errors);
             }
             else
             {

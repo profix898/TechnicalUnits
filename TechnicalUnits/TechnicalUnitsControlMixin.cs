@@ -4,9 +4,16 @@ using TechnicalUnits.Internal;
 
 namespace TechnicalUnits;
 
+/// <summary>
+/// Provides shared functionality for technical units controls, including value conversion,
+/// validation, and keyboard/button handling for increment/decrement operations.
+/// </summary>
 public class TechnicalUnitsControlMixin
 {
-    public static double ApproxEpsilon = 0.01;
+    /// <summary>
+    /// The epsilon value used for approximate floating-point comparisons.
+    /// </summary>
+    public const double ApproxEpsilon = 0.01;
 
     private readonly ITechnicalUnitsControlImpl _control;
 
@@ -26,7 +33,7 @@ public class TechnicalUnitsControlMixin
     /// <summary>Converts a text representation to its corresponding value.</summary>
     /// <remarks>On failure to convert text to value, the function does not throw exceptions, 
     /// but returns a list of errors and potentially a null value. The caller is responsible 
-    /// for deciding on an approproriate action or UI response.</remarks>
+    /// for deciding on an appropriate action or UI response.</remarks>
     public double? ConvertTextToValue(string? text, List<Exception>? errors = null)
     {
         return _control.ConvertTextToValue(text, errors);
@@ -64,6 +71,18 @@ public class TechnicalUnitsControlMixin
 
     #region UpDownButton
 
+    /// <summary>
+    /// Handles the up button press, incrementing the value based on current key modifiers.
+    /// </summary>
+    /// <remarks>
+    /// The increment behavior varies based on modifier keys:
+    /// <list type="bullet">
+    /// <item><description>No modifier: Increments by <see cref="ITechnicalUnitsControl.Increment"/>.</description></item>
+    /// <item><description>Shift: Multiplies by <see cref="ITechnicalUnitsControl.IncrementMult"/>.</description></item>
+    /// <item><description>Alt: Increments at the position before the relative decimal separator.</description></item>
+    /// <item><description>Shift+Alt: Increments at the highest significant position.</description></item>
+    /// </list>
+    /// </remarks>
     public void OnUpButton()
     {
         var errors = new List<Exception>();
@@ -139,10 +158,22 @@ public class TechnicalUnitsControlMixin
         }
 
         value = ValidateLimits(value, errors); // Set the value (and update the control text)
-        _control.SetValue(value, errors);
-    }
+            _control.SetValue(value, errors);
+        }
 
-    public void OnDownButton()
+        /// <summary>
+        /// Handles the down button press, decrementing the value based on current key modifiers.
+        /// </summary>
+        /// <remarks>
+        /// The decrement behavior varies based on modifier keys:
+        /// <list type="bullet">
+        /// <item><description>No modifier: Decrements by <see cref="ITechnicalUnitsControl.Increment"/>.</description></item>
+        /// <item><description>Shift: Divides by <see cref="ITechnicalUnitsControl.IncrementMult"/>.</description></item>
+        /// <item><description>Alt: Decrements at the position before the relative decimal separator.</description></item>
+        /// <item><description>Shift+Alt: Decrements at the highest significant position.</description></item>
+        /// </list>
+        /// </remarks>
+        public void OnDownButton()
     {
         var errors = new List<Exception>();
         var value = _control.Value; // Store the current value
@@ -231,6 +262,12 @@ public class TechnicalUnitsControlMixin
 
     private KeyModifiers keyModifiers;
 
+    /// <summary>
+    /// Handles key down events for the control.
+    /// </summary>
+    /// <param name="key">The key that was pressed, or <c>null</c> if only modifiers changed.</param>
+    /// <param name="keyModifiers">The current state of modifier keys.</param>
+    /// <returns><c>true</c> if the key event was handled; otherwise, <c>false</c>.</returns>
     public bool OnKeyDown(Keys? key, KeyModifiers keyModifiers)
     {
         this.keyModifiers |= keyModifiers;
@@ -270,11 +307,16 @@ public class TechnicalUnitsControlMixin
         }
 
         return false;
-    }
+        }
 
-    public bool OnKeyUp(KeyModifiers keyModifiers)
-    {
-        this.keyModifiers &= ~keyModifiers;
+        /// <summary>
+        /// Handles key up events for the control.
+        /// </summary>
+        /// <param name="keyModifiers">The modifier keys that were released.</param>
+        /// <returns><c>true</c> if the key event was handled; otherwise, <c>false</c>.</returns>
+        public bool OnKeyUp(KeyModifiers keyModifiers)
+        {
+            this.keyModifiers &= ~keyModifiers;
 
         return false;
     }

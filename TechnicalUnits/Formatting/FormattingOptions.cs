@@ -4,14 +4,50 @@ using System.Globalization;
 
 namespace TechnicalUnits.Formatting;
 
+/// <summary>
+/// Specifies formatting options for parsing and displaying numeric values with units.
+/// </summary>
 [TypeConverter(typeof(ExpandableObjectConverter))]
 public sealed class FormattingOptions
 {
     #region Default
 
+    /// <summary>
+    /// Gets the default formatting options instance.
+    /// </summary>
+    /// <remarks>
+    /// This is a shared instance. Use <see cref="Clone"/> to create a modifiable copy
+    /// if you need to customize options without affecting other code.
+    /// </remarks>
     public static FormattingOptions Default { get; } = new FormattingOptions();
 
     #endregion
+
+    /// <summary>
+    /// Creates a shallow copy of this <see cref="FormattingOptions"/> instance.
+    /// </summary>
+    /// <returns>A new <see cref="FormattingOptions"/> with the same property values.</returns>
+    public FormattingOptions Clone()
+    {
+        return new FormattingOptions
+        {
+            NumberFormat = (NumberFormatInfo)NumberFormat.Clone(),
+            SIStyle = SIStyle,
+            PrefixOrUnitAsDecimalSeparator = PrefixOrUnitAsDecimalSeparator,
+            SISeparator = SISeparator,
+            UnitSeparator = UnitSeparator,
+            SignificantDigits = SignificantDigits,
+            FractionalPrecision = FractionalPrecision,
+            ForceDecimalSeparator = ForceDecimalSeparator,
+            ForceSign = ForceSign,
+            WhitePrepad = WhitePrepad,
+            WhitePostpad = WhitePostpad,
+            ZeroPrepad = ZeroPrepad,
+            ZeroPostpad = ZeroPostpad,
+            AdaptCompositeUnitCase = AdaptCompositeUnitCase,
+            UnitMustBeAtEnd = UnitMustBeAtEnd
+        };
+    }
 
     [Category("Number Format")]
     [Description("Specifies the (culture-specific) number format (default: current UI culture).")]
@@ -50,11 +86,11 @@ public sealed class FormattingOptions
     public bool ForceSign { get; set; }
 
     [Category("Display Format")]
-    [Description("Number of characters before the decimal separator (filled with whitespace if neccesary).")]
+    [Description("Number of characters before the decimal separator (filled with whitespace if necessary).")]
     public int WhitePrepad { get; set; }
 
     [Category("Display Format")]
-    [Description("Number of characters after the decimal separator (filled with whitespace if neccesary).")]
+    [Description("Number of characters after the decimal separator (filled with whitespace if necessary).")]
     public int WhitePostpad { get; set; }
 
     [Category("Display Format")]
@@ -66,7 +102,7 @@ public sealed class FormattingOptions
     public int ZeroPostpad { get; set; }
 
     [Category("Units")]
-    [Description("Forces unit to lowercase if an SI prefix is preceeding it.")]
+    [Description("Forces unit to lowercase if an SI prefix is preceding it.")]
     public bool AdaptCompositeUnitCase { get; set; }
 
     [Category("Units")]

@@ -1,70 +1,74 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Globalization;
+using TechnicalUnits.Formatting;
 using TechnicalUnits.Units;
-using static System.Math;
-using static TechnicalUnits.Internal.MathHelper;
 
 namespace TechnicalUnits.Extensions;
 
-public static class UnitUtility
+public static partial class UnitUtility
 {
-    private static readonly string[] _siPrefixes = { "y", "z", "a", "f", "p", "n", "µ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y" };
-
-    /// <summary>Formats value in SI unit format (e.g. '10.0 mT')</summary>
-    /// <param name="unit">SI unit to use for formatting.</param>
-    /// <param name="value">Double-precision value.</param>
-    /// <param name="precision">(Optional) Decimal precision (number of decimals).</param>
-    /// <param name="shortenTrailingZeros">(Optional) Trailing zero decimals are shortened (to a single digit).</param>
-    public static string FormatSimple(this Unit unit, double value, int precision = 3, bool shortenTrailingZeros = true, CultureInfo? cultureInfo = null)
+    /// <summary>
+    /// Formats a numeric value with the specified unit using SI notation.
+    /// </summary>
+    /// <param name="unit">The unit to use for formatting.</param>
+    /// <param name="value">The numeric value to format.</param>
+    /// <param name="precision">The number of decimal places (default: 3).</param>
+    /// <param name="cultureInfo">Optional culture info for number formatting.</param>
+    /// <param name="formattingOptions">Optional formatting options.</param>
+    /// <returns>A formatted string representation of the value with unit.</returns>
+    public static string Format(this Unit unit, double value, int precision = 3, CultureInfo? cultureInfo = null, FormattingOptions? formattingOptions = null)
     {
-        return FormatSimple(unit.ToString(), value, precision, shortenTrailingZeros, cultureInfo);
-    }
-
-    public static string FormatSimple(string unit, double value, int precision = 3, bool shortenTrailingZeros = true, CultureInfo? cultureInfo = null)
-    {
-        if (unit == null)
-            throw new ArgumentNullException(nameof(unit));
-        if (precision < 0)
-            throw new ArgumentOutOfRangeException(nameof(precision));
-
-        cultureInfo ??= CultureInfo.InvariantCulture;
-
-        // Zero value
-        if (value == 0.0)
-            return String.Format(cultureInfo, "{0} {1}", value, unit);
-
-        var valueAbs = Abs(value); // Prefixes based on absolute value (for negative values)
-        var prefixRange = Log10(valueAbs) / 3.0;
-        if (valueAbs < 1.0 && prefixRange < (int) prefixRange)
-            prefixRange -= 1; // Log10(value / 1e3)
-        var prefixGroup = (int) prefixRange;
-        var divisor = Pow(10.0, prefixGroup * 3);
-
-        prefixGroup += 8; // Offset in 'prefixes' list
-        if (prefixGroup < 0 || prefixGroup >= _siPrefixes.Length)
-            return String.Format(cultureInfo, "{0} {1}", value, unit);
-
-        if (shortenTrailingZeros)
-            precision = GetPrecision(valueAbs, divisor, precision);
-
-        return String.Format(cultureInfo, "{0} {1}{2}", (value / divisor).ToString($"F{precision}", cultureInfo), _siPrefixes[prefixGroup], unit);
-    }
-
-    #region Private
-
-    private static int GetPrecision(double value, double divisor, int precision)
-    {
-        var div = Round(10.0 * value / divisor, 3);
-        for (var i = 1; i <= precision; i++)
+        formattingOptions = (formattingOptions ?? FormattingOptions.Default).Clone();
+        formattingOptions.FractionalPrecision = precision;
+        if (cultureInfo != null)
         {
-            if (GetDecimals(div) < 0.1)
-                return i;
-
-            div *= 10.0; // Left shift by one digit
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
         }
 
-        return precision;
+        return Formatter.Format(value, unit, formattingOptions);
     }
 
-    #endregion
+    /// <summary>
+    /// Parses a string representation of a value with the specified unit.
+    /// </summary>
+    /// <param name="unit">The expected unit for parsing.</param>
+    /// <param name="strValue">The string to parse.</param>
+    /// <param name="cultureInfo">Optional culture info for number parsing.</param>
+    /// <param name="formattingOptions">Optional formatting options.</param>
+    /// <returns>The parsed numeric value in the base unit.</returns>
+    public static double Parse(this Unit unit, string strValue, CultureInfo? cultureInfo = null, FormattingOptions? formattingOptions = null)
+    {
+        formattingOptions = (formattingOptions ?? FormattingOptions.Default).Clone();
+        if (cultureInfo != null)
+        {
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
+        }
+
+        return Parser.ParseString(strValue, unit, formattingOptions);
+    }
+
+    /// <summary>
+    /// Parses a string representation of a value with the specified unit and alternate units.
+    /// </summary>
+    /// <param name="unit">The primary unit for parsing.</param>
+    /// <param name="strValue">The string to parse.</param>
+    /// <param name="alternateUnits">A collection of alternate units that may appear in the string.</param>
+    /// <param name="cultureInfo">Optional culture info for number parsing.</param>
+    /// <param name="formattingOptions">Optional formatting options.</param>
+    /// <returns>The parsed numeric value in the base unit.</returns>
+    public static double Parse(this Unit unit, string strValue, IEnumerable<DerivedUnit> alternateUnits, CultureInfo? cultureInfo = null, FormattingOptions? formattingOptions = null)
+    {
+        formattingOptions = (formattingOptions ?? FormattingOptions.Default).Clone();
+        if (cultureInfo != null)
+        {
+            formattingOptions.NumberFormat.NumberDecimalSeparator = cultureInfo.NumberFormat.NumberDecimalSeparator;
+            formattingOptions.NumberFormat.NumberGroupSeparator = cultureInfo.NumberFormat.NumberGroupSeparator;
+        }
+
+        var unitOptions = new UnitOptions(unit, alternateUnits);
+
+        return Parser.ParseString(strValue, unitOptions, formattingOptions);
+    }
 }
