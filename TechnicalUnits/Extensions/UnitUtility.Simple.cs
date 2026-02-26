@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Globalization;
-using TechnicalUnits.Units;
+using TechnicalUnits.UnitDefinition;
 using static System.Math;
 using static TechnicalUnits.Internal.MathHelper;
 
@@ -8,25 +8,28 @@ namespace TechnicalUnits.Extensions;
 
 public static partial class UnitUtility
 {
-    private static readonly string[] _siPrefixes = { "y", "z", "a", "f", "p", "n", "µ", "m", "", "k", "M", "G", "T", "P", "E", "Z", "Y" };
+    private static readonly string[] _siPrefixes =
+    [
+        "y", "z", "a", "f", "p", "n", "µ", "m", "", "k",
+        "M", "G", "T", "P", "E", "Z", "Y"
+    ];
 
     /// <summary>Formats value in SI unit format (e.g. '10.0 mT')</summary>
     /// <param name="unit">SI unit to use for formatting.</param>
     /// <param name="value">Double-precision value.</param>
     /// <param name="precision">(Optional) Decimal precision (number of decimals).</param>
     /// <param name="shortenTrailingZeros">(Optional) Trailing zero decimals are shortened (to a single digit).</param>
+    /// <param name="cultureInfo">(Optional) Culture info for number formatting.</param>
     public static string FormatSimple(this Unit unit, double value, int precision = 3, bool shortenTrailingZeros = true, CultureInfo? cultureInfo = null)
-    {
-        return FormatSimple(unit.ToString(), value, precision, shortenTrailingZeros, cultureInfo);
-        }
+        => FormatSimple(unit.ToString(), value, precision, shortenTrailingZeros, cultureInfo);
 
-        /// <summary>Formats value in SI unit format (e.g. '10.0 mT')</summary>
-        /// <param name="unit">SI unit string to use for formatting.</param>
-        /// <param name="value">Double-precision value.</param>
-        /// <param name="precision">(Optional) Decimal precision (number of decimals).</param>
-        /// <param name="shortenTrailingZeros">(Optional) Trailing zero decimals are shortened (to a single digit).</param>
-        /// <param name="cultureInfo">(Optional) Culture info for number formatting.</param>
-        public static string FormatSimple(string unit, double value, int precision = 3, bool shortenTrailingZeros = true, CultureInfo? cultureInfo = null)
+    /// <summary>Formats value in SI unit format (e.g. '10.0 mT')</summary>
+    /// <param name="unit">SI unit string to use for formatting.</param>
+    /// <param name="value">Double-precision value.</param>
+    /// <param name="precision">(Optional) Decimal precision (number of decimals).</param>
+    /// <param name="shortenTrailingZeros">(Optional) Trailing zero decimals are shortened (to a single digit).</param>
+    /// <param name="cultureInfo">(Optional) Culture info for number formatting.</param>
+    public static string FormatSimple(string unit, double value, int precision = 3, bool shortenTrailingZeros = true, CultureInfo? cultureInfo = null)
     {
         if (unit == null)
             throw new ArgumentNullException(nameof(unit));

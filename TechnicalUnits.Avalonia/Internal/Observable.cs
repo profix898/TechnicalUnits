@@ -8,8 +8,5 @@ namespace TechnicalUnits.Avalonia.Internal;
 /// </summary>
 internal static class Observable
 {
-    public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> action)
-    {
-        return source.Subscribe(new AnonymousObserver<T>(action));
-    }
+    public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> action) => source.Subscribe(new AnonymousObserver<T>(action));
 }

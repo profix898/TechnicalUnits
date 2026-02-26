@@ -5,9 +5,9 @@ namespace TechnicalUnits.Avalonia;
 /// <summary>
 ///     Provides data for the value changed event of a TechnicalUpDown control.
 /// </summary>
-public class TechnicalUpDownValueChangedEventArgs : RoutedEventArgs
+public class UpDownValueChangedEventArgs : RoutedEventArgs
 {
-    public TechnicalUpDownValueChangedEventArgs(RoutedEvent routedEvent, double? oldValue, double? newValue)
+    public UpDownValueChangedEventArgs(RoutedEvent routedEvent, double? oldValue, double? newValue)
         : base(routedEvent)
     {
         OldValue = oldValue;

@@ -1,16 +1,34 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using static System.Math;
 
 namespace TechnicalUnits.Math.Expressions;
 
+/// <summary>
+/// Expression that invokes a built-in mathematical function (sin, cos, sqrt, max, pow, …).
+/// </summary>
 public sealed class FunctionExpression : ExpressionBase
 {
-    public static readonly string[] oneArgFunctions = ["abs", "acos", "asin", "atan", "ceiling", "cos", "cosh", "exp", "floor", "log", "log10", "sin", "sinh", "sqrt", "tan", "tanh"];
-    
-    public static readonly string[] twoArgFunction = ["max", "min", "pow"];
+    private static readonly string[] OneArgFunctionNames =
+    [
+        "abs", "acos", "asin", "atan", "ceiling", "cos", "cosh", "exp", "floor", "log",
+        "log10", "sin", "sinh", "sqrt", "tan", "tanh"
+    ];
 
+    private static readonly HashSet<string> OneArgFunctions = new HashSet<string>(OneArgFunctionNames, StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] TwoArgFunctionNames = ["max", "min", "pow"];
+
+    private static readonly HashSet<string> TwoArgFunctions = new HashSet<string>(TwoArgFunctionNames, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Initializes a new <see cref="FunctionExpression" /> for the specified function name.
+    /// </summary>
+    /// <param name="function">The function name (case-insensitive, e.g. <c>"sin"</c>, <c>"max"</c>).</param>
+    /// <param name="validate">When <c>true</c>, throws if <paramref name="function" /> is not a recognised built-in.</param>
+    /// <exception cref="ArgumentException"><paramref name="validate" /> is <c>true</c> and the function name is invalid.</exception>
     public FunctionExpression(string function, bool validate = true)
     {
         function = function.ToLowerInvariant();
@@ -21,10 +39,13 @@ public sealed class FunctionExpression : ExpressionBase
         Function = function;
     }
 
-    public string Function { get; }
-
+    /// <inheritdoc />
     public override int ArgumentCount => IsOneArgFunction(Function) ? 1 : 2;
 
+    /// <summary>Gets the lower-case function name.</summary>
+    public string Function { get; }
+
+    /// <inheritdoc />
     public override double Evaluate(double[] values)
     {
         ValidateArguments(values);
@@ -67,32 +88,22 @@ public sealed class FunctionExpression : ExpressionBase
         throw new ArgumentException(String.Format(CultureInfo.CurrentCulture, "Invalid function name '{0}'.", Function), nameof(Function));
     }
 
+    /// <inheritdoc />
+    public override string ToString() => Function;
+
     #region Internal
 
-    public static string[] GetFunctionNames()
-    {
-        return oneArgFunctions.Concat(twoArgFunction).ToArray();
-    }
+    /// <summary>Returns the names of all built-in functions.</summary>
+    public static string[] GetFunctionNames() => OneArgFunctionNames.Concat(TwoArgFunctionNames).ToArray();
 
-    public static bool IsFunction(string function)
-    {
-        return IsOneArgFunction(function) || IsTwoArgFunction(function);
-    }
+    /// <summary>Determines whether <paramref name="function" /> is a recognised built-in function.</summary>
+    public static bool IsFunction(string function) => IsOneArgFunction(function) || IsTwoArgFunction(function);
 
-    public static bool IsOneArgFunction(string function)
-    {
-        return oneArgFunctions.Contains(function, StringComparer.OrdinalIgnoreCase);
-    }
+    /// <summary>Determines whether <paramref name="function" /> is a one-argument function.</summary>
+    public static bool IsOneArgFunction(string function) => OneArgFunctions.Contains(function);
 
-    public static bool IsTwoArgFunction(string function)
-    {
-        return twoArgFunction.Contains(function, StringComparer.OrdinalIgnoreCase);
-    }
+    /// <summary>Determines whether <paramref name="function" /> is a two-argument function.</summary>
+    public static bool IsTwoArgFunction(string function) => TwoArgFunctions.Contains(function);
 
     #endregion
-
-    public override string ToString()
-    {
-        return Function;
-    }
 }

@@ -7,8 +7,45 @@ using static TechnicalUnits.Internal.CharMatchHelper;
 
 namespace TechnicalUnits.Formatting;
 
+/// <summary>
+/// Parses string representations of SI-prefixed numeric values back into <see cref="double" />
+/// values, handling decimal separators, SI prefixes, exponent notation, and unit symbols.
+/// </summary>
+/// <remarks>
+/// Two parsing paths exist: <see cref="ParseString" /> for complete strings and the internal
+/// <c>ParseStream</c> for character-by-character reading (used by the math evaluator).
+/// Both share a state-machine design driven by <see cref="ParserPartEnum" />.
+/// </remarks>
 public static class Parser
 {
+    #region Nested Type: ParserState
+
+    #region Nested type: ParserState
+
+    private class ParserState
+    {
+        public readonly StringBuilder chrStr = new StringBuilder();
+        public readonly StringBuilder decStr = new StringBuilder();
+        public readonly List<Exception> warnings = [];
+
+        public double unitConvFactor = 1.0;
+        public Exception? alternateUnitWarning;
+
+        public ParserPartEnum currentPart = ParserPartEnum.PreDecPart;
+        public decimal preDecVal;
+        public decimal postDecVal;
+
+        public int sign = 1;
+        public bool siPrefixFound;
+
+        public int exp;
+        public int expSign = 1;
+    }
+
+    #endregion
+
+    #endregion
+
     #region Parse
 
     /// <summary>
@@ -16,12 +53,14 @@ public static class Parser
     /// </summary>
     /// <param name="strValue">The string to parse.</param>
     /// <param name="unitOptions">The unit options for parsing.</param>
-    /// <param name="formattingOptions">The formatting options (default: <see cref="FormattingOptions.Default"/>).</param>
+    /// <param name="formattingOptions">The formatting options (default: <see cref="FormattingOptions.Default" />).</param>
     /// <param name="warnings">An optional list to collect parsing warnings.</param>
     /// <returns>The parsed numeric value, converted to the base unit.</returns>
     public static double ParseString(string strValue, UnitOptions unitOptions, FormattingOptions? formattingOptions = null, List<Exception>? warnings = null)
     {
-        var state = ParseStringInternal($"{strValue.Trim()} ", unitOptions, formattingOptions ?? FormattingOptions.Default);
+        // Append a trailing space as a sentinel to force the state machine to finalize
+        // pending accumulation states (e.g., PreDecNum) when the input ends with digits.
+        var state = ParseStringInternal(strValue.Trim() + " ", unitOptions, formattingOptions ?? FormattingOptions.Default);
 
         double value;
         if (state.postDecVal != 0)
@@ -98,22 +137,22 @@ public static class Parser
                     break;
 
                 case ParserPartEnum.PreDecNum:
-                if (IsNumeric(ch))
-                {
-                    state.decStr.Append(ch); // Append the number to the decStr
-                    i++;
-                    break;
-                }
+                    if (IsNumeric(ch))
+                    {
+                        state.decStr.Append(ch); // Append the number to the decStr
+                        i++;
+                        break;
+                    }
 
-                if (!Int32.TryParse(state.decStr.ToString(), out var preDecVal))
-                {
-                    state.warnings.Add(new FormatException($"Failed to parse pre-decimal value: '{state.decStr}'."));
-                    preDecVal = 0;
-                }
-                state.preDecVal = preDecVal;
-                state.decStr.Clear();
-                state.currentPart = ParserPartEnum.DecSepPart;
-                break;
+                    if (!Int32.TryParse(state.decStr.ToString(), out var preDecVal))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse pre-decimal value: '{state.decStr}'."));
+                        preDecVal = 0;
+                    }
+                    state.preDecVal = preDecVal;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.DecSepPart;
+                    break;
 
                 case ParserPartEnum.DecSepPart:
                     str = state.chrStr.ToString();
@@ -153,7 +192,9 @@ public static class Parser
                     if (IsNumeric(ch)) // This has to happen after the string is checked, since str is one character behind ch
                     {
                         // Should not happen on first iteration. Should also not happen on later iterations, since DecSep or ParseStreamHandleUnit should have advanced the state before the postDec part begins.
-                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart, state.chrStr.ToString()));
+                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr
+                        }' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart,
+                                                                         state.chrStr.ToString()));
                         state.chrStr.Clear(); // Discard unidentifiable decSep 
                         state.currentPart = ParserPartEnum.PostDecPart;
                         break;
@@ -206,22 +247,22 @@ public static class Parser
                     break;
 
                 case ParserPartEnum.PostDecNum:
-                if (IsNumeric(ch))
-                {
-                    state.decStr.Append(ch); // Append for next run
-                    i++;
-                    break;
-                }
+                    if (IsNumeric(ch))
+                    {
+                        state.decStr.Append(ch); // Append for next run
+                        i++;
+                        break;
+                    }
 
-                if (!Decimal.TryParse(state.decStr.ToString(), out var postDecVal))
-                {
-                    state.warnings.Add(new FormatException($"Failed to parse post-decimal value: '{state.decStr}'."));
-                    postDecVal = 0;
-                }
-                state.postDecVal = (decimal)Pow(10, -1 * state.decStr.Length) * postDecVal;
-                state.decStr.Clear();
-                state.currentPart = ParserPartEnum.PostPostDecPart;
-                break;
+                    if (!Decimal.TryParse(state.decStr.ToString(), out var postDecVal))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse post-decimal value: '{state.decStr}'."));
+                        postDecVal = 0;
+                    }
+                    state.postDecVal = (decimal) Pow(10, -1 * state.decStr.Length) * postDecVal;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.PostPostDecPart;
+                    break;
 
                 case ParserPartEnum.PostPostDecPart:
                     str = state.chrStr.ToString();
@@ -294,23 +335,23 @@ public static class Parser
                     break;
 
                 case ParserPartEnum.ExpNum:
-                if (IsNumeric(ch))
-                {
-                    state.decStr.Append(ch); // Append for next run
-                    i++;
-                    break;
-                }
+                    if (IsNumeric(ch))
+                    {
+                        state.decStr.Append(ch); // Append for next run
+                        i++;
+                        break;
+                    }
 
-                if (!Int32.TryParse(state.decStr.ToString(), out var expVal))
-                {
-                    state.warnings.Add(new FormatException($"Failed to parse exponent value: '{state.decStr}'."));
-                    expVal = 0;
-                }
-                state.exp += state.expSign * expVal;
-                state.expSign = 1;
-                state.decStr.Clear();
-                state.currentPart = ParserPartEnum.SuffixPart;
-                break;
+                    if (!Int32.TryParse(state.decStr.ToString(), out var expVal))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse exponent value: '{state.decStr}'."));
+                        expVal = 0;
+                    }
+                    state.exp += state.expSign * expVal;
+                    state.expSign = 1;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.SuffixPart;
+                    break;
 
                 case ParserPartEnum.SuffixPart:
                     str = state.chrStr.ToString();
@@ -469,29 +510,27 @@ public static class Parser
                     break;
 
                 case ParserPartEnum.PreDecNum:
-                if (IsNumeric(ch))
-                {
-                    state.decStr.Append(ch); // Append the number to the decStr
-                    AdvanceStream(ref stringReader, out advancedStream);
-                    break;
-                }
+                    if (IsNumeric(ch))
+                    {
+                        state.decStr.Append(ch); // Append the number to the decStr
+                        AdvanceStream(ref stringReader, out advancedStream);
+                        break;
+                    }
 
-                if (!Int32.TryParse(state.decStr.ToString(), out var preDecValStream))
-                {
-                    state.warnings.Add(new FormatException($"Failed to parse pre-decimal value: '{state.decStr}'."));
-                    preDecValStream = 0;
-                }
-                state.preDecVal = preDecValStream;
-                state.decStr.Clear();
-                state.currentPart = ParserPartEnum.DecSepPart;
-                break;
+                    if (!Int32.TryParse(state.decStr.ToString(), out var preDecValStream))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse pre-decimal value: '{state.decStr}'."));
+                        preDecValStream = 0;
+                    }
+                    state.preDecVal = preDecValStream;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.DecSepPart;
+                    break;
 
                 case ParserPartEnum.DecSepPart:
                     str = state.chrStr.ToString();
 
-                    if (SIPrefixes.IsExpPrefix(str) &&
-                        (IsNumeric((char) stringReader.Peek(1)) ||
-                         IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
+                    if (SIPrefixes.IsExpPrefix(str) && (IsNumeric((char) stringReader.Peek(1)) || (IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2)))))
                     {
                         // Valid format of exponential notation found
                         state.chrStr.Clear(); // Reset the appending
@@ -516,7 +555,9 @@ public static class Parser
                     if (IsNumeric(ch)) // This has to happen after the string is checked, since str is one character behind ch
                     {
                         // Should not happen on first iteration. Should also not happen on later iterations, since DecSep or ParseStreamHandleUnit should have advanced the state before the postDec part begins.
-                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr}' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart, state.chrStr.ToString()));
+                        state.warnings.Add(new UnexpectedSyntaxException($"Discarding '{state.chrStr
+                        }' as it could not be identified as either SI symbol or unit (or a combination of both), followed by a number.", state.currentPart,
+                                                                         state.chrStr.ToString()));
                         state.chrStr.Clear(); // Discard unidentifiable decSep 
                         state.currentPart = ParserPartEnum.PostDecPart;
                         break;
@@ -541,9 +582,7 @@ public static class Parser
 
                 case ParserPartEnum.PostDecPart:
                     str = state.chrStr.ToString();
-                    if (SIPrefixes.IsExpPrefix(str) &&
-                        (IsNumeric((char) stringReader.Peek(1)) ||
-                         (IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2)))))
+                    if (SIPrefixes.IsExpPrefix(str) && (IsNumeric((char) stringReader.Peek(1)) || (IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2)))))
                     {
                         // Valid format of exponential notation found
                         state.chrStr.Clear(); // Reset the appending
@@ -584,25 +623,23 @@ public static class Parser
                     if (IsNumeric(ch))
                     {
                         state.decStr.Append(ch); // Append for next run
-                            AdvanceStream(ref stringReader, out advancedStream);
-                            break;
-                        }
-
-                        if (!Decimal.TryParse(state.decStr.ToString(), out var postDecValStream))
-                        {
-                            state.warnings.Add(new FormatException($"Failed to parse post-decimal value: '{state.decStr}'."));
-                            postDecValStream = 0;
-                        }
-                        state.postDecVal = (decimal)Pow(10, -1 * state.decStr.Length) * postDecValStream;
-                        state.decStr.Clear();
-                        state.currentPart = ParserPartEnum.PostPostDecPart;
+                        AdvanceStream(ref stringReader, out advancedStream);
                         break;
+                    }
+
+                    if (!Decimal.TryParse(state.decStr.ToString(), out var postDecValStream))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse post-decimal value: '{state.decStr}'."));
+                        postDecValStream = 0;
+                    }
+                    state.postDecVal = (decimal) Pow(10, -1 * state.decStr.Length) * postDecValStream;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.PostPostDecPart;
+                    break;
 
                 case ParserPartEnum.PostPostDecPart:
                     str = state.chrStr.ToString();
-                    if (SIPrefixes.IsExpPrefix(str) &&
-                        (IsNumeric((char) stringReader.Peek(1)) ||
-                         IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2))))
+                    if (SIPrefixes.IsExpPrefix(str) && (IsNumeric((char) stringReader.Peek(1)) || (IsSign((char) stringReader.Peek(1)) && IsNumeric((char) stringReader.Peek(2)))))
                     {
                         // Valid format of exponential notation found
                         state.chrStr.Clear(); // Reset the appending
@@ -673,23 +710,23 @@ public static class Parser
                     break;
 
                 case ParserPartEnum.ExpNum:
-                if (IsNumeric(ch))
-                {
-                    state.decStr.Append(ch); // Append for next run
-                    AdvanceStream(ref stringReader, out advancedStream);
-                    break;
-                }
+                    if (IsNumeric(ch))
+                    {
+                        state.decStr.Append(ch); // Append for next run
+                        AdvanceStream(ref stringReader, out advancedStream);
+                        break;
+                    }
 
-                if (!Int32.TryParse(state.decStr.ToString(), out var expValStream))
-                {
-                    state.warnings.Add(new FormatException($"Failed to parse exponent value: '{state.decStr}'."));
-                    expValStream = 0;
-                }
-                state.exp += state.expSign * expValStream;
-                state.expSign = 1;
-                state.decStr.Clear();
-                state.currentPart = ParserPartEnum.SuffixPart;
-                break;
+                    if (!Int32.TryParse(state.decStr.ToString(), out var expValStream))
+                    {
+                        state.warnings.Add(new FormatException($"Failed to parse exponent value: '{state.decStr}'."));
+                        expValStream = 0;
+                    }
+                    state.exp += state.expSign * expValStream;
+                    state.expSign = 1;
+                    state.decStr.Clear();
+                    state.currentPart = ParserPartEnum.SuffixPart;
+                    break;
 
                 case ParserPartEnum.SuffixPart:
                     str = state.chrStr.ToString();
@@ -788,8 +825,8 @@ public static class Parser
         return streamReader.Read();
     }
 
-    private static bool ParseStreamHandleUnit(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOptions,
-                                              ParserState state, out bool siFound, out bool unitFound)
+    private static bool ParseStreamHandleUnit(StringReaderLookahead stringReader, UnitOptions unitOptions, FormattingOptions formattingOptions, ParserState state, out bool siFound,
+                                              out bool unitFound)
     {
         // Use look-ahead to the next whitespace, number, operand or invalid character
         siFound = false;
@@ -861,8 +898,7 @@ public static class Parser
 
         foreach (var unit in unitOptions.GetSortedUnits()) // For all units symbols (from the longest to the shortest)
         {
-            if (!String.IsNullOrEmpty(unit.Symbol) &&
-                SIPrefixes.ContainsSIPrefix(unit.Symbol, out var ambPrefix)) // Check whether this unit symbol can be mistaken as an SI prefix
+            if (!String.IsNullOrEmpty(unit.Symbol) && SIPrefixes.ContainsSIPrefix(unit.Symbol, out var ambPrefix)) // Check whether this unit symbol can be mistaken as an SI prefix
             {
                 // Special case: Remove first occurence of unit symbol starting from the end of the string
                 var k = strValue.Length - unit.Symbol.Length - whiteCnt;
@@ -877,7 +913,9 @@ public static class Parser
                         unitCnt++;
 
                         strValue = SubstringTolerant(strValue, 0, k) + SubstringTolerant(strValue, k + unit.Symbol.Length, strValue.Length);
-                        state.alternateUnitWarning = new AmbiguousUnitException($"(Alternate) Unit \'{unit.Symbol}\' is ambiguous with a SI prefix \'{ambPrefix}\' and has been ignored. \nPlease enter unit and prefix if this prefix is desired.", unit, ambPrefix);
+                        state.alternateUnitWarning =
+                            new AmbiguousUnitException($"(Alternate) Unit \'{unit.Symbol}\' is ambiguous with a SI prefix \'{ambPrefix
+                            }\' and has been ignored. \nPlease enter unit and prefix if this prefix is desired.", unit, ambPrefix);
 
                         break;
                     }
@@ -895,7 +933,6 @@ public static class Parser
                 {
                     var unitLength = unit.Symbol.Length;
                     state.unitConvFactor = unit.BaseConversionFactor;
-                    SubstringTolerant(strValue, strValue.Length - unitLength, unitLength);
                     strValue = SubstringTolerant(strValue, 0, strValue.Length - unitLength);
 
                     unitCnt++;
@@ -914,12 +951,14 @@ public static class Parser
         var expAlt = 0;
         var lenAlt = 0;
 
+        // Use a local builder to avoid mutating state.chrStr during lookahead
+        var greedyStr = new StringBuilder(state.chrStr.ToString());
+
         while (k < strValue.Length && !IsNumeric(strValue[k]))
         {
-            state.chrStr.Append(strValue[k]);
-            var str = state.chrStr.ToString();
+            greedyStr.Append(strValue[k]);
 
-            if (SIPrefixes.IsSIPrefix(str, out var expAltTmp))
+            if (SIPrefixes.IsSIPrefix(greedyStr.ToString(), out var expAltTmp))
             {
                 lenAlt = k;
                 expAlt = expAltTmp;
@@ -932,32 +971,6 @@ public static class Parser
             exp = expAlt;
             i = lenAlt + 1; // Continue after the greedy match
         }
-    }
-
-    #endregion
-
-    #region Nested type: ParserState
-
-    private class ParserState
-    {
-        public readonly List<Exception> warnings = new List<Exception>();
-        public Exception? alternateUnitWarning;
-
-        public readonly StringBuilder chrStr = new StringBuilder();
-        public readonly StringBuilder decStr = new StringBuilder();
-
-        public ParserPartEnum currentPart = ParserPartEnum.PreDecPart;
-
-        public decimal preDecVal;
-        public decimal postDecVal;
-
-        public int sign = 1;
-
-        public int exp;
-        public int expSign = 1;
-
-        public bool siPrefixFound;
-        public double unitConvFactor = 1.0;
     }
 
     #endregion

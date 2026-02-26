@@ -9,19 +9,19 @@ namespace TechnicalUnits.WinForms;
 
 public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnitsControl
 {
-    private const int ButtonsWidth = 16; // Width of the up/down buttons
     private const int ButtonMargin = 8; // Margin between the text and buttons
+    private const int ButtonsWidth = 16; // Width of the up/down buttons
+    private bool _clipValueToMinMax;
+    private double _defaultValue;
+    private bool _enableMath;
 
     private FormattingOptions _formattingOptions;
-    private UnitOptions _unitOptions;
-    private bool _enableMath;
-    private double _minimum;
-    private double _maximum;
-    private bool _clipValueToMinMax;
     private double _increment;
     private double _incrementMult;
     private bool _isReadOnly;
-    private double _defaultValue;
+    private double _maximum;
+    private double _minimum;
+    private UnitOptions _unitOptions;
 
     public TechnicalUnitsUpDownCell()
     {
@@ -42,7 +42,7 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [Description("Specifies the formatting options and culture info for parsing and displaying values.")]
     public FormattingOptions FormattingOptions
     {
-        get { return _formattingOptions; }
+        get => _formattingOptions;
         set
         {
             _formattingOptions = value;
@@ -59,11 +59,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [Description("Specifies the unit options for parsing and displaying values.")]
     public UnitOptions UnitOptions
     {
-        get { return _unitOptions; }
+        get => _unitOptions;
         set
         {
             _unitOptions = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.UnitOptions = value;
 
@@ -76,11 +76,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(false)]
     public bool EnableMath
     {
-        get { return _enableMath; }
+        get => _enableMath;
         set
         {
             _enableMath = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.EnableMath = value;
 
@@ -97,11 +97,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(Double.MinValue)]
     public double Minimum
     {
-        get { return _minimum; }
+        get => _minimum;
         set
         {
             _minimum = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.Minimum = value;
 
@@ -114,11 +114,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(Double.MaxValue)]
     public double Maximum
     {
-        get { return _maximum; }
+        get => _maximum;
         set
         {
             _maximum = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.Maximum = value;
 
@@ -131,11 +131,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(true)]
     public bool ClipValueToMinMax
     {
-        get { return _clipValueToMinMax; }
+        get => _clipValueToMinMax;
         set
         {
             _clipValueToMinMax = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.ClipValueToMinMax = value;
 
@@ -152,11 +152,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(1.0)]
     public double Increment
     {
-        get { return _increment; }
+        get => _increment;
         set
         {
             _increment = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.Increment = value;
 
@@ -169,11 +169,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(10.0)]
     public double IncrementMult
     {
-        get { return _incrementMult; }
+        get => _incrementMult;
         set
         {
             _incrementMult = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.IncrementMult = value;
 
@@ -186,11 +186,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(1.0)]
     public bool IsReadOnly
     {
-        get { return _isReadOnly; }
+        get => _isReadOnly;
         set
         {
             _isReadOnly = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.IsReadOnly = value;
 
@@ -203,11 +203,11 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
     [DefaultValue(1.0)]
     public double Value
     {
-        get { return _defaultValue; }
+        get => _defaultValue;
         set
         {
             _defaultValue = value;
-            
+
             if (TryGetEditingTechnicalUnitsUpDown(RowIndex, out var editingEngineeringUpDown))
                 editingEngineeringUpDown.Value = value;
 
@@ -216,16 +216,15 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
         }
     }
 
-    /// Raised when the <see cref="Value"/> changes.
+    /// Raised when the
+    /// <see cref="Value" />
+    /// changes.
     public event EventHandler? ValueChanged;
 
     [ReadOnly(true)]
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string Text
-    {
-        get { return this.ConvertValueToText(_defaultValue); }
-    }
+    public string Text => this.ConvertValueToText(_defaultValue);
 
     #endregion
 
@@ -302,25 +301,20 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
         return errorIconBounds;
     }
 
-    public override object ParseFormattedValue(object formattedValue, DataGridViewCellStyle cellStyle, TypeConverter formattedValueTypeConverter,
-                                               TypeConverter valueTypeConverter)
-    {
-        return this.ConvertTextToValue(formattedValue);
-    }
+    public override object ParseFormattedValue(object formattedValue, DataGridViewCellStyle cellStyle, TypeConverter formattedValueTypeConverter, TypeConverter valueTypeConverter)
+        => this.ConvertTextToValue(formattedValue);
 
     protected override object GetFormattedValue(object? value, int rowIndex, ref DataGridViewCellStyle cellStyle, TypeConverter valueTypeConverter,
                                                 TypeConverter formattedValueTypeConverter, DataGridViewDataErrorContexts context)
-    {
-        return this.ConvertValueToText(value);
-    }
+        => this.ConvertValueToText(value);
 
     public override bool KeyEntersEditMode(KeyEventArgs e)
     {
         var isCtrl = e.Shift || e.Alt || e.Control;
         var isSign = System.Windows.Forms.Keys.Subtract == e.KeyCode || System.Windows.Forms.Keys.Add == e.KeyCode;
-        var isDigit = Char.IsDigit((char)e.KeyCode) || e.KeyCode >= System.Windows.Forms.Keys.NumPad0 && e.KeyCode <= System.Windows.Forms.Keys.NumPad9;
+        var isDigit = Char.IsDigit((char) e.KeyCode) || (e.KeyCode >= System.Windows.Forms.Keys.NumPad0 && e.KeyCode <= System.Windows.Forms.Keys.NumPad9);
 
-        return (!isCtrl && (isSign || isDigit));
+        return !isCtrl && (isSign || isDigit);
     }
 
     public override Type EditType => typeof(TechnicalUnitsUpDown);
@@ -335,8 +329,8 @@ public class TechnicalUnitsUpDownCell : DataGridViewTextBoxCell, ITechnicalUnits
 
     private bool TryGetEditingTechnicalUnitsUpDown(int rowIndex, [NotNullWhen(true)] out TechnicalUnitsUpDown? technicalUnitsUpDown)
     {
-        if (DataGridView != null && rowIndex >= 0 && rowIndex < DataGridView.Rows.Count
-            && DataGridView.EditingControl is TechnicalUnitsUpDown editingControl && editingControl.EditingControlRowIndex == rowIndex)
+        if (DataGridView != null && rowIndex >= 0 && rowIndex < DataGridView.Rows.Count && DataGridView.EditingControl is TechnicalUnitsUpDown editingControl
+            && editingControl.EditingControlRowIndex == rowIndex)
         {
             technicalUnitsUpDown = editingControl;
             return true;

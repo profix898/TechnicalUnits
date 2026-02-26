@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
-using TechnicalUnits.Units;
+using TechnicalUnits.UnitDefinition;
 using TechnicalUnits.WinForms;
 
 namespace DemoWinForms

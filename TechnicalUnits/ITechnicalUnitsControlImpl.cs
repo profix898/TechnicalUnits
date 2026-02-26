@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace TechnicalUnits;
 
 /// <summary>
-/// Implementation interface for a technical units control, extending <see cref="ITechnicalUnitsControl"/>.
+/// Implementation interface for a technical units control, extending <see cref="ITechnicalUnitsControl" />.
 /// </summary>
 public interface ITechnicalUnitsControlImpl : ITechnicalUnitsControl
 {

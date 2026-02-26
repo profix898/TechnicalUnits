@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,7 +8,7 @@ namespace TechnicalUnits.Internal;
 
 internal class StringReaderLookahead : StringReader
 {
-    private readonly List<int> _peekList = new List<int>();
+    private readonly List<int> _peekList = [];
 
     public StringReaderLookahead(string str)
         : base(str)
@@ -35,7 +34,7 @@ internal class StringReaderLookahead : StringReader
         if (_peekList.Count < 1)
             return base.Peek();
 
-        return _peekList.First();
+        return _peekList[0];
     }
 
     public int Peek(int index)
@@ -60,6 +59,7 @@ internal class StringReaderLookahead : StringReader
     public string PeekStr(int length)
     {
         var str = new StringBuilder(length);
+        str.Length = length;
         for (var i = 0; i < length; i++)
             str[i] = (char) Peek(i);
 
@@ -81,7 +81,7 @@ internal class StringReaderLookahead : StringReader
         if (_peekList.Count < 1)
             return base.Read();
 
-        var cnt = _peekList.First();
+        var cnt = _peekList[0];
         _peekList.RemoveAt(0);
 
         return cnt;
@@ -105,10 +105,7 @@ internal class StringReaderLookahead : StringReader
         return cnt;
     }
 
-    public override string ReadToEnd()
-    {
-        return String.Join(String.Empty, _peekList) + base.ReadToEnd();
-    }
+    public override string ReadToEnd() => String.Join(String.Empty, _peekList) + base.ReadToEnd();
 
     public override string ReadLine()
     {
@@ -154,7 +151,7 @@ internal class StringReaderLookahead : StringReader
         if (_peekList.Count == 0)
             return base.ReadAsync(buffer, index, count);
 
-        return Task.FromResult(Read());
+        return Task.FromResult(Read(buffer, index, count));
     }
 
     #endregion

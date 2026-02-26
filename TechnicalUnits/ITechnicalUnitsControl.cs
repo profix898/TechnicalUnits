@@ -53,7 +53,8 @@ public interface ITechnicalUnitsControl
     double Increment { get; set; }
 
     /// <summary>
-    /// Specifies the multiplicative increment for value on up/down. Determines the amount by which the value is multiplied/divided when the up/down button is pressed (while the Shift key is pressed).
+    /// Specifies the multiplicative increment for value on up/down. Determines the amount by which the value is multiplied/divided when the up/down button is pressed (while the Shift key
+    /// is pressed).
     /// </summary>
     double IncrementMult { get; set; }
 

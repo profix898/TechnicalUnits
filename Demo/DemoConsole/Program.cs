@@ -1,6 +1,6 @@
 ﻿using System;
 using TechnicalUnits.Extensions;
-using TechnicalUnits.Units;
+using TechnicalUnits.UnitDefinition;
 
 namespace DemoConsole;
 
@@ -34,7 +34,7 @@ internal class Program
         Console.WriteLine($"1m23 -> {SIUnits.Meter.Parse("1m23"):F6}");
         Console.WriteLine($"1m23m -> {SIUnits.Meter.Parse("1m23m"):F6}");
 
-        Console.WriteLine($"10.0in -> {SIUnits.Meter.Parse("10.0in", new[] { LengthUnits.Inch, LengthUnits.Mil }):F6}");
-        Console.WriteLine($"10.0mil -> {SIUnits.Meter.Parse("10.0mil", new[] { LengthUnits.Inch, LengthUnits.Mil }):F6}");
+        Console.WriteLine($"10.0in -> {SIUnits.Meter.Parse("10.0in", [Units.Inch, Units.Mil]):F6}");
+        Console.WriteLine($"10.0mil -> {SIUnits.Meter.Parse("10.0mil", [Units.Inch, Units.Mil]):F6}");
     }
 }

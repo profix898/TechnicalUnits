@@ -23,31 +23,22 @@ public class TechnicalUnitsControlMixin
     }
 
     #region TextValueConversion
-    
+
     /// <summary>Converts a value to its formatted text representation.</summary>
-    public string ConvertValueToText(double value)
-    {
-        return _control.ConvertValueToText(value);
-    }
+    public string ConvertValueToText(double value) => _control.ConvertValueToText(value);
 
     /// <summary>Converts a text representation to its corresponding value.</summary>
-    /// <remarks>On failure to convert text to value, the function does not throw exceptions, 
-    /// but returns a list of errors and potentially a null value. The caller is responsible 
+    /// <remarks>On failure to convert text to value, the function does not throw exceptions,
+    /// but returns a list of errors and potentially a null value. The caller is responsible
     /// for deciding on an appropriate action or UI response.</remarks>
-    public double? ConvertTextToValue(string? text, List<Exception>? errors = null)
-    {
-        return _control.ConvertTextToValue(text, errors);
-    }
-    
+    public double? ConvertTextToValue(string? text, List<Exception>? errors = null) => _control.ConvertTextToValue(text, errors);
+
     /// <summary>Validates the specified value against the control's minimum and maximum limits.</summary>
     /// <returns>The validated value, possibly clamped to the minimum or maximum if out of bounds.
-    /// If <see cref="ITechnicalUnitsControl.ClipValueToMinMax"/> is true, the value is clamped to the range.
-    /// Otherwise, if the value is out of bounds, an <see cref="ArgumentOutOfRangeException"/> is added to <paramref name="errors"/>,
+    /// If <see cref="ITechnicalUnitsControl.ClipValueToMinMax" /> is true, the value is clamped to the range.
+    /// Otherwise, if the value is out of bounds, an <see cref="ArgumentOutOfRangeException" /> is added to <paramref name="errors" />,
     /// and the minimum or maximum value is returned as appropriate.</returns>
-    public double ValidateLimits(double value, List<Exception>? errors = null)
-    {
-        return _control.ValidateLimits(value, errors);
-    }
+    public double ValidateLimits(double value, List<Exception>? errors = null) => _control.ValidateLimits(value, errors);
 
     /// <summary>Attempts to convert the current control text to a value and set it on the control.</summary>
     /// <remarks>Parses the text in the control, converts it to a value using the current formatting and
@@ -77,8 +68,8 @@ public class TechnicalUnitsControlMixin
     /// <remarks>
     /// The increment behavior varies based on modifier keys:
     /// <list type="bullet">
-    /// <item><description>No modifier: Increments by <see cref="ITechnicalUnitsControl.Increment"/>.</description></item>
-    /// <item><description>Shift: Multiplies by <see cref="ITechnicalUnitsControl.IncrementMult"/>.</description></item>
+    /// <item><description>No modifier: Increments by <see cref="ITechnicalUnitsControl.Increment" />.</description></item>
+    /// <item><description>Shift: Multiplies by <see cref="ITechnicalUnitsControl.IncrementMult" />.</description></item>
     /// <item><description>Alt: Increments at the position before the relative decimal separator.</description></item>
     /// <item><description>Shift+Alt: Increments at the highest significant position.</description></item>
     /// </list>
@@ -145,12 +136,14 @@ public class TechnicalUnitsControlMixin
                 }
                 else
                     value += _control.Increment; // Zero is an exception, since there is no position with any value.
+
                 // Use the increment for this case instead.
             }
             else if (keyModifiers.HasFlag(KeyModifiers.Shift))
                 value *= _control.IncrementMult; // Use the multiplicative increment
             else if (keyModifiers.HasFlag(KeyModifiers.Alt))
                 value += System.Math.Pow(10, 3 * MathHelper.GetExp3Value(value));
+
             // _control.Increment the position before the decimal separator (ignoring the SI prefix following,
             // i.e. we use the relative decimal separator, not the absolute including the SI prefix)
             else
@@ -158,22 +151,22 @@ public class TechnicalUnitsControlMixin
         }
 
         value = ValidateLimits(value, errors); // Set the value (and update the control text)
-            _control.SetValue(value, errors);
-        }
+        _control.SetValue(value, errors);
+    }
 
-        /// <summary>
-        /// Handles the down button press, decrementing the value based on current key modifiers.
-        /// </summary>
-        /// <remarks>
-        /// The decrement behavior varies based on modifier keys:
-        /// <list type="bullet">
-        /// <item><description>No modifier: Decrements by <see cref="ITechnicalUnitsControl.Increment"/>.</description></item>
-        /// <item><description>Shift: Divides by <see cref="ITechnicalUnitsControl.IncrementMult"/>.</description></item>
-        /// <item><description>Alt: Decrements at the position before the relative decimal separator.</description></item>
-        /// <item><description>Shift+Alt: Decrements at the highest significant position.</description></item>
-        /// </list>
-        /// </remarks>
-        public void OnDownButton()
+    /// <summary>
+    /// Handles the down button press, decrementing the value based on current key modifiers.
+    /// </summary>
+    /// <remarks>
+    /// The decrement behavior varies based on modifier keys:
+    /// <list type="bullet">
+    /// <item><description>No modifier: Decrements by <see cref="ITechnicalUnitsControl.Increment" />.</description></item>
+    /// <item><description>Shift: Divides by <see cref="ITechnicalUnitsControl.IncrementMult" />.</description></item>
+    /// <item><description>Alt: Decrements at the position before the relative decimal separator.</description></item>
+    /// <item><description>Shift+Alt: Decrements at the highest significant position.</description></item>
+    /// </list>
+    /// </remarks>
+    public void OnDownButton()
     {
         var errors = new List<Exception>();
         var value = _control.Value; // Store the current value
@@ -245,6 +238,7 @@ public class TechnicalUnitsControlMixin
             else if (keyModifiers.HasFlag(KeyModifiers.Shift))
                 value /= _control.IncrementMult; // Use the multiplicative increment
             else if (keyModifiers.HasFlag(KeyModifiers.Alt))
+
                 // Increment the position before the decimal separator (ignoring the SI prefix following,
                 // i.e. we use the relative decimal separator, not the absolute including the SI prefix)
                 value -= System.Math.Pow(10, 3 * MathHelper.GetExp3Value(value));
@@ -281,9 +275,7 @@ public class TechnicalUnitsControlMixin
             return true;
         }
 
-        if (this.keyModifiers.HasFlag(KeyModifiers.Shift)
-            || this.keyModifiers.HasFlag(KeyModifiers.Alt)
-            || this.keyModifiers.HasFlag(KeyModifiers.Shift | KeyModifiers.Alt))
+        if (this.keyModifiers.HasFlag(KeyModifiers.Shift) || this.keyModifiers.HasFlag(KeyModifiers.Alt) || this.keyModifiers.HasFlag(KeyModifiers.Shift | KeyModifiers.Alt))
         {
             if (key == Keys.Up)
             {
@@ -307,16 +299,16 @@ public class TechnicalUnitsControlMixin
         }
 
         return false;
-        }
+    }
 
-        /// <summary>
-        /// Handles key up events for the control.
-        /// </summary>
-        /// <param name="keyModifiers">The modifier keys that were released.</param>
-        /// <returns><c>true</c> if the key event was handled; otherwise, <c>false</c>.</returns>
-        public bool OnKeyUp(KeyModifiers keyModifiers)
-        {
-            this.keyModifiers &= ~keyModifiers;
+    /// <summary>
+    /// Handles key up events for the control.
+    /// </summary>
+    /// <param name="keyModifiers">The modifier keys that were released.</param>
+    /// <returns><c>true</c> if the key event was handled; otherwise, <c>false</c>.</returns>
+    public bool OnKeyUp(KeyModifiers keyModifiers)
+    {
+        this.keyModifiers &= ~keyModifiers;
 
         return false;
     }

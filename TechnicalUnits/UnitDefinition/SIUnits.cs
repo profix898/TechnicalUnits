@@ -1,11 +1,13 @@
 ﻿using static System.Math;
 
-namespace TechnicalUnits.Units;
+namespace TechnicalUnits.UnitDefinition;
 
+/// <summary>
+/// Defines the seven SI base units, the SI derived units with special names, and
+/// common secondary (compound) units such as area, volume, speed, and acceleration.
+/// </summary>
 public static class SIUnits
 {
-    public static readonly Unit Dimensionless = new Unit("", "", Dimension.Dimensionless);
-
     // SI Base Units
     public static readonly Unit Second = new Unit("time", Dimension.Second);
     public static readonly Unit Meter = new Unit("length", Dimension.Meter);
@@ -14,6 +16,8 @@ public static class SIUnits
     public static readonly Unit Kelvin = new Unit("temperature", Dimension.Kelvin);
     public static readonly Unit Mol = new Unit("amountOfSubstance", Dimension.Mol);
     public static readonly Unit Candela = new Unit("luminousIntensity", Dimension.Candela);
+
+    public static readonly Unit Dimensionless = new Unit("", "", Dimension.Dimensionless);
 
     // SI Derived Units
     public static readonly Unit Radian = new Unit("planeAngleRad", "rad", Dimension.Angle);
@@ -44,4 +48,6 @@ public static class SIUnits
     public static readonly Unit Volume = new Unit("volume", Meter * Meter * Meter);
     public static readonly Unit Speed = new Unit("speed", Meter / Second);
     public static readonly Unit Acceleration = new Unit("acceleration", Meter / (Second * Second));
+    public static readonly Unit VolumetricFlow = new Unit("volumetricFlow", Meter * Meter * Meter / Second);
+    public static readonly Unit AngularVelocity = new Unit("angularVelocity", Radian / Second);
 }

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
 using TechnicalUnits.Formatting;
-using TechnicalUnits.Units;
+using TechnicalUnits.UnitDefinition;
 
 namespace TechnicalUnits.Extensions;
 
@@ -58,7 +58,8 @@ public static partial class UnitUtility
     /// <param name="cultureInfo">Optional culture info for number parsing.</param>
     /// <param name="formattingOptions">Optional formatting options.</param>
     /// <returns>The parsed numeric value in the base unit.</returns>
-    public static double Parse(this Unit unit, string strValue, IEnumerable<DerivedUnit> alternateUnits, CultureInfo? cultureInfo = null, FormattingOptions? formattingOptions = null)
+    public static double Parse(this Unit unit, string strValue, IEnumerable<DerivedUnit> alternateUnits, CultureInfo? cultureInfo = null,
+                               FormattingOptions? formattingOptions = null)
     {
         formattingOptions = (formattingOptions ?? FormattingOptions.Default).Clone();
         if (cultureInfo != null)

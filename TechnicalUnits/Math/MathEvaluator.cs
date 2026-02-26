@@ -9,11 +9,27 @@ using static System.Char;
 
 namespace TechnicalUnits.Math;
 
+/// <summary>
+/// Evaluates mathematical expressions that may contain SI-prefixed numbers, unit symbols,
+/// built-in functions (sin, cos, sqrt, …), named constants (pi, e, c, …), and unit
+/// conversion brackets (<c>[°C>K]</c>).
+/// </summary>
+/// <remarks>
+/// The evaluator uses the Shunting-Yard algorithm to convert infix notation into a
+/// postfix (Reverse Polish Notation) queue, which is then evaluated left-to-right.
+/// <para>
+/// This class is <b>not</b> thread-safe. Do not share a single instance across threads
+/// without external synchronisation.
+/// </para>
+/// </remarks>
 public sealed class MathEvaluator
 {
-    private readonly List<string> _functionList;
     private readonly Dictionary<string, ExpressionBase> _expressionCache;
+    private readonly List<string> _functionList;
 
+    /// <summary>
+    /// Initializes a new <see cref="MathEvaluator" /> with the default built-in functions and constants.
+    /// </summary>
     public MathEvaluator()
     {
         _functionList = new List<string>(FunctionExpression.GetFunctionNames());
@@ -22,16 +38,19 @@ public sealed class MathEvaluator
         _expressionCache = new Dictionary<string, ExpressionBase>(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Gets the dictionary of named constants available during evaluation.
+    /// Includes mathematical constants (pi, e) and physical constants (c, h, kB, …).
+    /// Entries can be added or removed at runtime.
+    /// </summary>
     public Dictionary<string, double> Constants { get; } = new Dictionary<string, double>()
     {
         // Math constants
-        { "pi", System.Math.PI },
-        { "e", System.Math.E },
-        { "sqrt2", System.Math.Sqrt(2) },
+        { "pi", System.Math.PI }, { "e", System.Math.E }, { "sqrt2", System.Math.Sqrt(2) },
 
         // Physical constants
         { "c", 299792458 }, // Speed of light in m/s
-        { "g", 9.80665 },   // Standard gravity in m/s²
+        { "g", 9.80665 }, // Standard gravity in m/s²
         { "h", 6.62607015e-34 }, // Planck's constant in J·s
         { "hbar", 1.054571817e-34 }, // Reduced Planck's constant in J·s
         { "kB", 1.380649e-23 }, // Boltzmann constant in J/K
@@ -47,13 +66,133 @@ public sealed class MathEvaluator
         { "Ry", 2.1798723611035e-18 }, // Rydberg constant in J
         { "F", 96485.33212 }, // Faraday constant in C/mol
         { "Vm", 22.413962 }, // Molar volume of ideal gas at STP in L/mol
-        { "atm", 101325 }, // Standard atmosphere
+        { "atm", 101325 } // Standard atmosphere
     };
+
+    /// <summary>
+    /// Parses and evaluates a mathematical expression string.
+    /// </summary>
+    /// <param name="expression">The infix expression to evaluate (e.g. <c>"2 * sin(pi / 4)"</c>).</param>
+    /// <param name="unitOptions">Unit options used for number/unit parsing.</param>
+    /// <param name="formattingOptions">Formatting options used for number parsing.</param>
+    /// <param name="warnings">An optional list that receives non-fatal parsing warnings.</param>
+    /// <returns>The evaluated result as a <see cref="double" />.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="expression" /> is <c>null</c> or empty.</exception>
+    /// <exception cref="MathEvaluatorException">The expression contains invalid syntax.</exception>
+    public double Evaluate(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings)
+    {
+        if (String.IsNullOrEmpty(expression))
+            throw new ArgumentNullException(nameof(expression));
+
+        using var state = new EvaluatorState(expression, unitOptions, formattingOptions, warnings);
+
+        ParseExpression(state);
+
+        return EvaluateExpression(state);
+    }
+
+    #region Evaluator
+
+    private static double EvaluateExpression(EvaluatorState state)
+    {
+        state.evaluationStack.Clear();
+
+        foreach (var expression in state.expressionQueue)
+        {
+            if (state.evaluationStack.Count < expression.ArgumentCount)
+                throw new MathEvaluatorException($"Invalid number of arguments for expression '{expression}'.");
+
+            state.parameters.Clear();
+            for (var i = 0; i < expression.ArgumentCount; i++)
+                state.parameters.Push(state.evaluationStack.Pop());
+
+            state.evaluationStack.Push(expression.Evaluate(state.parameters.ToArray()));
+        }
+
+        var result = state.evaluationStack.Pop();
+
+        if (state.evaluationStack.Any())
+            throw new MathEvaluatorException($"Invalid evaluation stack: Items '{String.Join(", ", state.evaluationStack)}' remaining.");
+
+        return result;
+    }
+
+    #endregion
+
+    #region Nested Type: EvaluatorState
+
+    private sealed class EvaluatorState : IDisposable
+    {
+        // Parser
+        public readonly StringBuilder buffer = new StringBuilder();
+
+        // Evaluation
+        public readonly Stack<double> evaluationStack = new Stack<double>();
+        public readonly Queue<ExpressionBase> expressionQueue = new Queue<ExpressionBase>();
+
+        public readonly StringReaderLookahead expressionReader;
+        public readonly FormattingOptions formattingOptions;
+        public readonly Stack<double> parameters = new Stack<double>(2);
+        public readonly Stack<string> symbolStack = new Stack<string>();
+
+        // Options
+        public readonly UnitOptions unitOptions;
+        public readonly List<Exception> warnings;
+
+        // Parser (mutable) state
+        public char currentChar;
+        public TokenType lastType;
+        public uint nestedFunctionDepth;
+        public uint nestedGroupDepth;
+
+        public EvaluatorState(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings = null)
+        {
+            expressionReader = new StringReaderLookahead(expression);
+            this.warnings = warnings ?? [];
+
+            this.unitOptions = unitOptions;
+            this.formattingOptions = formattingOptions;
+        }
+
+        #region Implementation of IDisposable
+
+        public void Dispose()
+        {
+            expressionReader.Dispose();
+        }
+
+        #endregion
+    }
+
+    #endregion
+
+    #region Nested Type: TokenType
+
+    private enum TokenType
+    {
+        Unknown = 0,
+        Number,
+        OperatorSymbol,
+        GroupOpen,
+        GroupClose,
+        Comma,
+        Conversion
+    }
+
+    #endregion
 
     #region Functions
 
+    /// <summary>Gets the sorted list of registered function names.</summary>
     public IReadOnlyList<string> Functions => _functionList;
 
+    /// <summary>
+    /// Registers a custom function that can be used in expressions.
+    /// </summary>
+    /// <param name="functionName">The name of the function (case-insensitive).</param>
+    /// <param name="expression">The expression that implements the function logic.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="functionName" /> or <paramref name="expression" /> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">A function with the same name is already registered.</exception>
     public void RegisterFunction(string functionName, ExpressionBase expression)
     {
         if (String.IsNullOrEmpty(functionName))
@@ -69,24 +208,9 @@ public sealed class MathEvaluator
         _expressionCache.Add(functionName, expression);
     }
 
-    private bool IsFunction(string name)
-    {
-        return _functionList.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
-    }
+    private bool IsFunction(string name) => _functionList.BinarySearch(name, StringComparer.OrdinalIgnoreCase) >= 0;
 
     #endregion
-
-    public double Evaluate(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings)
-    {
-        if (String.IsNullOrEmpty(expression))
-            throw new ArgumentNullException(nameof(expression));
-
-        using var state = new EvaluatorState(expression, unitOptions, formattingOptions, warnings);
-
-        ParseExpression(state);
-
-        return EvaluateExpression(state);
-    }
 
     #region Parser
 
@@ -226,10 +350,8 @@ public sealed class MathEvaluator
         var lastType = state.lastType;
 
         var isNumber = NumberExpression.IsNumber(state.currentChar);
-        var isNegative = NumberExpression.IsNegativeSign(state.currentChar) &&
-                         (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
-        var isPositive = NumberExpression.IsPositiveSign(state.currentChar) &&
-                         (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
+        var isNegative = NumberExpression.IsNegativeSign(state.currentChar) && (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
+        var isPositive = NumberExpression.IsPositiveSign(state.currentChar) && (lastChar == '\0' || lastChar == '(' || lastType == TokenType.OperatorSymbol);
 
         if (!isNumber && !isNegative && !isPositive)
             return false;
@@ -254,13 +376,13 @@ public sealed class MathEvaluator
 
         do
         {
-            var symbol = (state.symbolStack.Count == 0) ? String.Empty : state.symbolStack.Peek();
+            var symbol = state.symbolStack.Count == 0 ? String.Empty : state.symbolStack.Peek();
             repeat = false;
             if (state.symbolStack.Count == 0)
                 state.symbolStack.Push(str);
             else if (symbol == "(")
                 state.symbolStack.Push(str);
-            else if (Precedence(str) > Precedence(symbol))
+            else if (Precedence(str) > Precedence(symbol) || (Precedence(str) == Precedence(symbol) && IsRightAssociative(str)))
                 state.symbolStack.Push(str);
             else
             {
@@ -274,8 +396,20 @@ public sealed class MathEvaluator
         state.lastType = TokenType.OperatorSymbol;
         return true;
 
-        // Local function: Precedence
-        static int Precedence(string str) => (str.Length == 1 && (str[0] == '*' || str[0] == '/')) ? 2 : 1;
+        // Local functions
+        static int Precedence(string str)
+        {
+            if (str.Length != 1)
+                return 1;
+            return str[0] switch
+            {
+                '*' or '/' => 2,
+                '^' => 3,
+                _ => 1
+            };
+        }
+
+        static bool IsRightAssociative(string str) => str.Length == 1 && str[0] == '^';
     }
 
     private bool ParseGroupOpen(EvaluatorState state)
@@ -335,7 +469,7 @@ public sealed class MathEvaluator
 
     private bool ParseComma(EvaluatorState state)
     {
-        if (state.currentChar != ',' || state.currentChar != ';')
+        if (state.currentChar != ',' && state.currentChar != ';')
             return false;
 
         if (state.nestedFunctionDepth <= 0 || state.nestedFunctionDepth < state.nestedGroupDepth)
@@ -383,96 +517,6 @@ public sealed class MathEvaluator
     }
 
     #endregion
-
-    #endregion
-
-    #region Evaluator
-
-    private static double EvaluateExpression(EvaluatorState state)
-    {
-        state.evaluationStack.Clear();
-
-        foreach (var expression in state.expressionQueue)
-        {
-            if (state.evaluationStack.Count < expression.ArgumentCount)
-                throw new MathEvaluatorException($"Invalid number of arguments for expression '{expression}'.");
-
-            state.parameters.Clear();
-            for (var i = 0; i < expression.ArgumentCount; i++)
-                state.parameters.Push(state.evaluationStack.Pop());
-
-            state.evaluationStack.Push(expression.Evaluate(state.parameters.ToArray()));
-        }
-
-        var result = state.evaluationStack.Pop();
-
-        if (state.evaluationStack.Any())
-            throw new MathEvaluatorException($"Invalid evaluation stack: Items '{String.Join(", ", state.evaluationStack)}' remaining.");
-
-        return result;
-    }
-
-    #endregion
-
-    #region Nested Type: TokenType
-
-    private enum TokenType
-    {
-        Unknown = 0,
-        Number,
-        OperatorSymbol,
-        GroupOpen,
-        GroupClose,
-        Comma,
-        Conversion
-    }
-
-    #endregion
-
-    #region Nested Type: EvaluatorState
-
-    private sealed class EvaluatorState : IDisposable
-    {
-        public EvaluatorState(string expression, UnitOptions unitOptions, FormattingOptions formattingOptions, List<Exception>? warnings = null)
-        {
-            expressionReader = new StringReaderLookahead(expression);
-            this.warnings = warnings ?? new List<Exception>();
-
-            this.unitOptions = unitOptions;
-            this.formattingOptions = formattingOptions;
-        }
-
-        public readonly StringReaderLookahead expressionReader;
-        public readonly List<Exception> warnings;
-
-        // Options
-        public readonly UnitOptions unitOptions;
-        public readonly FormattingOptions formattingOptions;
-
-        // Parser
-        public readonly StringBuilder buffer = new StringBuilder();
-        public readonly Queue<ExpressionBase> expressionQueue = new Queue<ExpressionBase>();
-        public readonly Stack<string> symbolStack = new Stack<string>();
-    
-        // Parser (mutable) state
-        public char currentChar;
-        public TokenType lastType;
-        public uint nestedFunctionDepth;
-        public uint nestedGroupDepth;
-
-        // Evaluation
-        public readonly Stack<double> evaluationStack = new Stack<double>();
-        public readonly Stack<double> parameters = new Stack<double>(2);
-
-        #region Implementation of IDisposable
-
-        public void Dispose()
-        {
-            expressionReader.Dispose();
-        }
-
-        #endregion
-    }
 
     #endregion
 }

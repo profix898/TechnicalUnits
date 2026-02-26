@@ -3,14 +3,15 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:avalonia="clr-namespace:TechnicalUnits.Avalonia;assembly=TechnicalUnits.Avalonia"
-        xmlns:units="clr-namespace:TechnicalUnits.Units;assembly=TechnicalUnits"
+        xmlns:units="clr-namespace:TechnicalUnits.UnitDefinition;assembly=TechnicalUnits"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="350"
         Width="600" Height="350"
         x:Class="DemoAvalonia.MainWindow"
         Title="TechnicalUnits">
     <StackPanel Margin="10">
         <TextBlock Text="Technical Units Demo" FontSize="24" Margin="0,0,0,10" />
-        <TextBlock Text="This is a demo application for the TechnicalUnitsUpDown control in Avalonia." Margin="0,0,0,20" />
+        <TextBlock Text="This is a demo application for the TechnicalUnitsUpDown control in Avalonia."
+                   Margin="0,0,0,20" />
         <avalonia:TechnicalUnitsUpDown />
         <avalonia:TechnicalUnitsUpDown Unit="{x:Static units:SIUnits.Ampere}" Value="100" />
         <avalonia:TechnicalUnitsUpDown Unit="{x:Static units:SIUnits.Joule}" Value="11000" />

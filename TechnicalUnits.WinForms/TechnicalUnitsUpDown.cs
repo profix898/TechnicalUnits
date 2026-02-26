@@ -17,10 +17,10 @@ namespace TechnicalUnits.WinForms;
 /// with advanced formatting and validation options.
 /// </summary>
 /// <remarks>
-/// The <see cref="TechnicalUnitsUpDown"/> control extends the functionality of the standard
-/// <see cref="UpDownBase"/> control by providing support for engineering notation and unit
-/// formatting. It also integrates with <see cref="IDataGridViewEditingControl"/> to enable
-/// editing within a <see cref="DataGridView"/>.
+/// The <see cref="TechnicalUnitsUpDown" /> control extends the functionality of the standard
+/// <see cref="UpDownBase" /> control by providing support for engineering notation and unit
+/// formatting. It also integrates with <see cref="IDataGridViewEditingControl" /> to enable
+/// editing within a <see cref="DataGridView" />.
 /// 
 /// This control is designed to be used in scenarios where precise numeric input and display
 /// are required, such as engineering, scientific, or technical applications. It provides
@@ -28,18 +28,18 @@ namespace TechnicalUnits.WinForms;
 /// </remarks>
 public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, ITechnicalUnitsControlImpl, IDataGridViewEditingControl, ISupportInitialize
 {
-    private readonly ToolTip _toolTipInfo = new ToolTip();
     private readonly Icon _mathModeIcon = Resources.MathModeIcon;
 
-    private readonly TextBox _upDownTextbox;
+    private readonly TechnicalUnitsControlMixin _mixin;
     private readonly Graphics _textBoxGraphics;
+    private readonly ToolTip _toolTipInfo = new ToolTip();
+
+    private readonly TextBox _upDownTextbox;
 
     private FormattingOptions _formattingOptions = new FormattingOptions();
     private UnitOptions _unitOptions = new UnitOptions();
 
     private double _value;
-
-    private readonly TechnicalUnitsControlMixin _mixin;
 
     public TechnicalUnitsUpDown()
         : this(null)
@@ -70,7 +70,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [Description("Specifies the formatting options and culture info for parsing and displaying values.")]
     public FormattingOptions FormattingOptions
     {
-        get { return _formattingOptions; }
+        get => _formattingOptions;
         set
         {
             _formattingOptions = value;
@@ -83,7 +83,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [Description("Specifies the unit options for parsing and displaying values.")]
     public UnitOptions UnitOptions
     {
-        get { return _unitOptions; }
+        get => _unitOptions;
         set
         {
             _unitOptions = value;
@@ -157,7 +157,9 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
         }
     }
 
-    /// Raised when the <see cref="Value"/> changes.
+    /// Raised when the
+    /// <see cref="Value" />
+    /// changes.
     public event EventHandler? ValueChanged;
 
     [ReadOnly(true)]
@@ -165,8 +167,8 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public override string Text
     {
-        get { return base.Text; }
-        set { base.Text = value; }
+        get => base.Text;
+        set => base.Text = value;
     }
 
     #endregion
@@ -319,9 +321,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
             // Let the edit control handle control and alt key combinations 
         }
         else if (e.KeyChar == '\r')
-        {
             e.Handled = true;
-        }
     }
 
     #endregion
@@ -358,7 +358,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     }
 
     #endregion
-    
+
     #region IDataGridViewEditingControl Members
 
     public void ApplyCellStyleToEditingControl(DataGridViewCellStyle dataGridViewCellStyle)
@@ -388,8 +388,8 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
             {
                 if (Controls[1] is TextBox textBox)
                 {
-                    if (RightToLeft == RightToLeft.No && !(textBox.SelectionLength == 0 && textBox.SelectionStart == textBox.Text.Length)
-                        || RightToLeft == RightToLeft.Yes && !(textBox.SelectionLength == 0 && textBox.SelectionStart == 0))
+                    if ((RightToLeft == RightToLeft.No && !(textBox.SelectionLength == 0 && textBox.SelectionStart == textBox.Text.Length))
+                        || (RightToLeft == RightToLeft.Yes && !(textBox.SelectionLength == 0 && textBox.SelectionStart == 0)))
                         return true;
                 }
                 break;
@@ -398,8 +398,8 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
             {
                 if (Controls[1] is TextBox textBox)
                 {
-                    if (RightToLeft == RightToLeft.No && !(textBox.SelectionLength == 0 && textBox.SelectionStart == 0)
-                        || RightToLeft == RightToLeft.Yes && !(textBox.SelectionLength == 0 && textBox.SelectionStart == textBox.Text.Length))
+                    if ((RightToLeft == RightToLeft.No && !(textBox.SelectionLength == 0 && textBox.SelectionStart == 0))
+                        || (RightToLeft == RightToLeft.Yes && !(textBox.SelectionLength == 0 && textBox.SelectionStart == textBox.Text.Length)))
                         return true;
                 }
                 break;
@@ -426,8 +426,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
             {
                 if (Controls[1] is TextBox textBox)
                 {
-                    if (textBox.SelectionLength > 0 ||
-                        textBox.SelectionStart < textBox.Text.Length)
+                    if (textBox.SelectionLength > 0 || textBox.SelectionStart < textBox.Text.Length)
                         return true;
                 }
                 break;
@@ -442,7 +441,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
         var userEdit = UserEdit;
         try
         {
-            UserEdit = ((context & DataGridViewDataErrorContexts.Display) == 0);
+            UserEdit = (context & DataGridViewDataErrorContexts.Display) == 0;
 
             UpdateEditText();
 
@@ -469,8 +468,8 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
 
     public object EditingControlFormattedValue
     {
-        get { return Text; }
-        set { Text = value as string ?? String.Empty; }
+        get => Text;
+        set => Text = value as string ?? String.Empty;
     }
 
     public int EditingControlRowIndex { get; set; }
@@ -484,7 +483,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     #endregion
 
     #region Private
-    
+
     private void NotifyDataGridViewValueChange()
     {
         if (EditingControlDataGridView == null)
@@ -508,7 +507,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
 
     private static KeyModifiers MapKeyModifiers(System.Windows.Forms.Keys keyModifiers)
     {
-        KeyModifiers mappedModifiers = KeyModifiers.None;
+        var mappedModifiers = KeyModifiers.None;
 
         if ((keyModifiers & System.Windows.Forms.Keys.Control) == System.Windows.Forms.Keys.Control)
             mappedModifiers |= KeyModifiers.Ctrl;
@@ -522,10 +521,10 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
 
     private static HorizontalAlignment TranslateAlignment(DataGridViewContentAlignment align)
     {
-        if ((align & (DataGridViewContentAlignment.TopRight) | DataGridViewContentAlignment.MiddleRight | DataGridViewContentAlignment.BottomRight) != 0)
+        if (((align & DataGridViewContentAlignment.TopRight) | DataGridViewContentAlignment.MiddleRight | DataGridViewContentAlignment.BottomRight) != 0)
             return HorizontalAlignment.Right;
 
-        if ((align & (DataGridViewContentAlignment.TopCenter) | DataGridViewContentAlignment.MiddleCenter | DataGridViewContentAlignment.BottomCenter) != 0)
+        if (((align & DataGridViewContentAlignment.TopCenter) | DataGridViewContentAlignment.MiddleCenter | DataGridViewContentAlignment.BottomCenter) != 0)
             return HorizontalAlignment.Center;
 
         return HorizontalAlignment.Left;

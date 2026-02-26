@@ -7,10 +7,25 @@ using static TechnicalUnits.Internal.MathHelper;
 
 namespace TechnicalUnits.Formatting;
 
+/// <summary>
+/// Formats numeric values with SI prefixes, unit symbols, and configurable padding/separators.
+/// </summary>
+/// <remarks>
+/// The formatter outputs values using multiples-of-three exponents (k, M, G, …, m, µ, n, …).
+/// Non-standard SI prefixes such as centi or hecto are <b>not</b> emitted.
+/// The <see cref="Parser" /> can, however, <em>accept</em> any SI prefix on input.
+/// </remarks>
 public static class Formatter
 {
     #region Format
 
+    /// <summary>
+    /// Formats <paramref name="value" /> with the specified unit and formatting options.
+    /// </summary>
+    /// <param name="value">The numeric value to format.</param>
+    /// <param name="unitOptions">Unit and alternate-unit configuration.</param>
+    /// <param name="formattingOptions">Display/formatting options (default: <see cref="FormattingOptions.Default" />).</param>
+    /// <returns>A formatted string containing the value, SI prefix, and unit symbol.</returns>
     public static string Format(double value, UnitOptions unitOptions, FormattingOptions? formattingOptions = null)
     {
         formattingOptions ??= FormattingOptions.Default;
@@ -33,8 +48,7 @@ public static class Formatter
         {
             var formatInfo = new NumberFormatInfo
             {
-                NumberDecimalSeparator = formattingOptions.NumberFormat.NumberDecimalSeparator,
-                NumberGroupSeparator = formattingOptions.NumberFormat.NumberGroupSeparator
+                NumberDecimalSeparator = formattingOptions.NumberFormat.NumberDecimalSeparator, NumberGroupSeparator = formattingOptions.NumberFormat.NumberGroupSeparator
             };
 
             var resultString = new StringBuilder((sign * value).ToString($"g{formattingOptions.SignificantDigits + 1:D}", formatInfo));
@@ -52,18 +66,19 @@ public static class Formatter
 
         // There should be a maximum of 3 places before the double
         if (Abs(value) > 1000.0)
-            throw new Exception("Internal Error: More than three orders of magnitude before the decimal separator.");
+            throw new InvalidOperationException("Internal Error: More than three orders of magnitude before the decimal separator.");
 
         var preDec = Truncate(value);
         var postDec = value - Truncate(value);
-        postDec = Round(postDec * Pow(10, formattingOptions.FractionalPrecision));
+        var fractionalScale = Pow(10, formattingOptions.FractionalPrecision);
+        postDec = Round(postDec * fractionalScale);
 
-        if (postDec >= Pow(10, formattingOptions.FractionalPrecision))
+        if (postDec >= fractionalScale)
         {
             // Fix late roundoff error due to float precision
-            var postDecFix = Floor(postDec) / Pow(10, formattingOptions.FractionalPrecision);
+            var postDecFix = Floor(postDec) / fractionalScale;
             preDec += postDecFix;
-            postDec -= Floor(postDecFix) * Pow(10, formattingOptions.FractionalPrecision);
+            postDec -= Floor(postDecFix) * fractionalScale;
         }
 
         var preDecStr = preDec.ToString(CultureInfo.InvariantCulture);
@@ -82,7 +97,7 @@ public static class Formatter
         else
             postDecStr = String.Empty;
 
-        var resultStrBuilder = new StringBuilder(postDecStr, Max(formattingOptions.WhitePostpad, formattingOptions.ZeroPostpad));
+        var resultStrBuilder = new StringBuilder(postDecStr, postDecStr.Length + Max(formattingOptions.WhitePostpad, formattingOptions.ZeroPostpad));
         var padLength = formattingOptions.ZeroPostpad - resultStrBuilder.Length;
         if (padLength > 0)
         {
@@ -154,8 +169,8 @@ public static class Formatter
             resultStrBuilder.Append(formattingOptions.UnitSeparator);
             if (!formattingOptions.PrefixOrUnitAsDecimalSeparator && formattingOptions.AdaptCompositeUnitCase && unitOptions.Unit.Symbol.Length > 1)
             {
-                resultStrBuilder.Append(siBeforeUnit ? unitOptions.Unit.Symbol.ToLower()[0] : unitOptions.Unit.Symbol.ToUpper()[0]);
-                resultStrBuilder.Append(unitOptions.Unit.Symbol.Substring(1, unitOptions.Unit.Symbol.Length - 1));
+                resultStrBuilder.Append(siBeforeUnit ? Char.ToLowerInvariant(unitOptions.Unit.Symbol[0]) : Char.ToUpperInvariant(unitOptions.Unit.Symbol[0]));
+                resultStrBuilder.Append(unitOptions.Unit.Symbol.Substring(1));
             }
             else
                 resultStrBuilder.Append(unitOptions.Unit);

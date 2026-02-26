@@ -12,6 +12,22 @@ public class TechnicalUnitsUpDownColumn : DataGridViewColumn, ITechnicalUnitsCon
     {
     }
 
+    #region Overrides of DataGridViewColumn
+
+    public override DataGridViewCell CellTemplate
+    {
+        get => base.CellTemplate;
+        set
+        {
+            if (value is not TechnicalUnitsUpDownCell)
+                throw new InvalidCastException("Value provided for CellTemplate must be of type TechnicalUnitsUpDownCell.");
+
+            base.CellTemplate = value;
+        }
+    }
+
+    #endregion
+
     #region Options
 
     [Browsable(true)]
@@ -253,22 +269,6 @@ public class TechnicalUnitsUpDownColumn : DataGridViewColumn, ITechnicalUnitsCon
                 throw new InvalidOperationException("DataGridViewColumn does not have a CellTemplate (of type TechnicalUnitsUpDownCell).");
 
             return TechnicalUnitsUpDownCellTemplate.Text;
-        }
-    }
-
-    #endregion
-
-    #region Overrides of DataGridViewColumn
-
-    public override DataGridViewCell CellTemplate
-    {
-        get { return base.CellTemplate; }
-        set
-        {
-            if (value is not TechnicalUnitsUpDownCell)
-                throw new InvalidCastException("Value provided for CellTemplate must be of type TechnicalUnitsUpDownCell.");
-
-            base.CellTemplate = value;
         }
     }
 
