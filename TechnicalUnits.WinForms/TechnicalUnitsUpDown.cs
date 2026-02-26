@@ -68,6 +68,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [Browsable(true)]
     [Category("EngineeringNotation")]
     [Description("Specifies the formatting options and culture info for parsing and displaying values.")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public FormattingOptions FormattingOptions
     {
         get => _formattingOptions;
@@ -81,6 +82,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [Browsable(true)]
     [Category("EngineeringNotation")]
     [Description("Specifies the unit options for parsing and displaying values.")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public UnitOptions UnitOptions
     {
         get => _unitOptions;
@@ -94,6 +96,7 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
     [Category("MathEvaluation")]
     [Description("Indicates whether math expressions are enabled.")]
     [DefaultValue(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableMath { get; set; }
 
     #endregion
@@ -464,16 +467,20 @@ public sealed class TechnicalUnitsUpDown : UpDownBase, ITechnicalUnitsControl, I
         }
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public DataGridView? EditingControlDataGridView { get; set; }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public object EditingControlFormattedValue
     {
         get => Text;
         set => Text = value as string ?? String.Empty;
     }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int EditingControlRowIndex { get; set; }
 
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EditingControlValueChanged { get; set; }
 
     public Cursor EditingPanelCursor => Cursor;

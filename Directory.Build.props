@@ -37,7 +37,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<Product>TechnicalUnits</Product>
-		<Description>TechnicalUnits provides ...</Description>
+		<Description>TechnicalUnits is a library for SI units and engineering notation, supporting formatting, parsing, and unit conversion.</Description>
 		<Authors>Thilo Viereck</Authors>
 		<Company></Company>
 		<Copyright>Copyright &#169; Thilo Viereck 2024-$([System.DateTime]::Now.ToString(`yyyy`))</Copyright>

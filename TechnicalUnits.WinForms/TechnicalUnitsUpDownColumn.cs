@@ -33,6 +33,7 @@ public class TechnicalUnitsUpDownColumn : DataGridViewColumn, ITechnicalUnitsCon
     [Browsable(true)]
     [Category("EngineeringNotation")]
     [Description("Specifies the formatting options and culture info for parsing and displaying values.")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public FormattingOptions FormattingOptions
     {
         get
@@ -55,6 +56,7 @@ public class TechnicalUnitsUpDownColumn : DataGridViewColumn, ITechnicalUnitsCon
     [Browsable(true)]
     [Category("EngineeringNotation")]
     [Description("Specifies the unit options for parsing and displaying values.")]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public UnitOptions UnitOptions
     {
         get
@@ -77,6 +79,7 @@ public class TechnicalUnitsUpDownColumn : DataGridViewColumn, ITechnicalUnitsCon
     [Category("MathEvaluation")]
     [Description("Indicates whether math expressions are enabled.")]
     [DefaultValue(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool EnableMath
     {
         get
