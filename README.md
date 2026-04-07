@@ -85,6 +85,8 @@ var newton = SIUnits.Kilogram * SIUnits.Meter / (SIUnits.Second * SIUnits.Second
 | `FormattingOptions` | Controls output style, precision, separators, padding, and more. |
 | `UnitOptions` | Specifies the base `Unit` and optional `AlternateUnits` (as `DerivedUnit`) for parsing. |
 | `SIStyles` | Enum controlling SI prefix rendering (Unicode, ASCII, English names, or plain float). |
+| `TechnicalUnitsFormatProvider` | Custom `IFormatProvider` and `ICustomFormatter` enabling `:SI` format specifiers in interpolated strings. |
+| `FormattableStringExtensions` | Extension methods (`SI()`) for formatting `FormattableString` with SI notation. |
 
 **Formatting styles (`SIStyles`):**
 
@@ -154,6 +156,50 @@ string text2 = SIUnits.Tesla.FormatSimple(0.010, precision: 1);  // "10.0 mT"
 ```
 
 `FormatSimple` automatically shortens trailing zeros by default (configurable via the `shortenTrailingZeros` parameter).
+
+### String Interpolation with SI Notation
+
+Use the `SI()` extension method to format interpolated strings with SI prefixes using the `:SI` format specifier:
+
+```csharp
+using TechnicalUnits.UnitDefinition;
+using static TechnicalUnits.Formatting.FormattableStringExtensions;
+
+double thickness = 25e-9;
+double frequency = 1.5e6;
+
+// Basic usage with unit symbol
+string text = SI($"Thickness = {thickness:SI}", "m");   // "Thickness = 25 nm"
+string text2 = SI($"Frequency = {frequency:SI}", "Hz"); // "Frequency = 1.5 MHz"
+
+// With Unit object
+string text3 = SI($"Thickness = {thickness:SI}", SIUnits.Meter);
+
+// With precision (SI0-SI9)
+string text4 = SI($"Value = {thickness:SI3}", "m");     // "Value = 25.000 nm"
+
+// Multiple values in one string
+string text5 = SI($"d={thickness:SI}, f={frequency:SI}", "");
+```
+
+> **Note:** C# doesn't allow custom format specifiers directly in `$""` strings. The `SI()` wrapper enables the `:SI` specifier by accepting a `FormattableString`.
+
+For full control over formatting, create a custom `TechnicalUnitsFormatProvider`:
+
+```csharp
+using TechnicalUnits.Formatting;
+using TechnicalUnits.UnitDefinition;
+using static TechnicalUnits.Formatting.FormattableStringExtensions;
+
+var provider = new TechnicalUnitsFormatProvider
+{
+    UnitOptions = new UnitOptions(SIUnits.Volt),
+    FormattingOptions = FormattingOptions.Default.Clone()
+};
+provider.FormattingOptions.FractionalPrecision = 2;
+
+string text = SI($"Voltage = {0.0033:SI}", provider);  // "Voltage = 3.30 mV"
+```
 
 ### Parsing
 
