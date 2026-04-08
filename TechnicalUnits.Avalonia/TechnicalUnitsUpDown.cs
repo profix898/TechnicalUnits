@@ -720,7 +720,7 @@ public class TechnicalUnitsUpDown : TemplatedControl, ITechnicalUnitsControl, IT
     }
 
     /// <inheritdoc />
-    protected override void OnLostFocus(RoutedEventArgs e)
+    protected override void OnLostFocus(FocusChangedEventArgs e)
     {
         if (_hasTextChanged)
             _mixin.TryUpdateValue();
@@ -748,13 +748,6 @@ public class TechnicalUnitsUpDown : TemplatedControl, ITechnicalUnitsControl, IT
     {
         if (_mixin.OnKeyUp(MapKeyModifiers(e.Key)))
             e.Handled = true;
-    }
-
-    /// <inheritdoc />
-    protected override void UpdateDataValidation(AvaloniaProperty property, BindingValueType state, Exception? error)
-    {
-        if (property == TextProperty || property == ValueProperty)
-            DataValidationErrors.SetError(this, error);
     }
 
     #endregion
