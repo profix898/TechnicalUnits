@@ -181,8 +181,8 @@ public class TechnicalUnitsUpDown : TemplatedControl, ITechnicalUnitsControl, IT
     /// <summary>
     /// Defines the <see cref="ValueChanged" /> event.
     /// </summary>
-    public static readonly RoutedEvent<NumericUpDownValueChangedEventArgs> ValueChangedEvent =
-        RoutedEvent.Register<TechnicalUnitsUpDown, NumericUpDownValueChangedEventArgs>(nameof(ValueChanged), RoutingStrategies.Bubble);
+    public static readonly RoutedEvent<UpDownValueChangedEventArgs> ValueChangedEvent =
+        RoutedEvent.Register<TechnicalUnitsUpDown, UpDownValueChangedEventArgs>(nameof(ValueChanged), RoutingStrategies.Bubble);
 
     /// <summary>
     /// Defines the <see cref="Text" /> property
@@ -445,7 +445,7 @@ public class TechnicalUnitsUpDown : TemplatedControl, ITechnicalUnitsControl, IT
     /// <summary>
     /// Raised when the <see cref="Value" /> changes.
     /// </summary>
-    public event EventHandler<NumericUpDownValueChangedEventArgs>? ValueChanged
+    public event EventHandler<UpDownValueChangedEventArgs>? ValueChanged
     {
         add => AddHandler(ValueChangedEvent, value);
         remove => RemoveHandler(ValueChangedEvent, value);

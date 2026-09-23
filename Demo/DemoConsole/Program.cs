@@ -1,6 +1,7 @@
 ﻿using System;
 using TechnicalUnits.Extensions;
 using TechnicalUnits.UnitDefinition;
+using static TechnicalUnits.Formatting.FormattableStringExtensions;
 
 namespace DemoConsole;
 
@@ -36,5 +37,7 @@ internal class Program
 
         Console.WriteLine($"10.0in -> {SIUnits.Meter.Parse("10.0in", [Units.Inch, Units.Mil]):F6}");
         Console.WriteLine($"10.0mil -> {SIUnits.Meter.Parse("10.0mil", [Units.Inch, Units.Mil]):F6}");
+
+        Console.WriteLine(SI($"{1.23e-3:SI} to {1.23e3:SI}", SIUnits.Meter));
     }
 }
